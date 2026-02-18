@@ -4,19 +4,21 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Stage, Layer, Shape } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
-import { Camera, Point, screenToWorld } from '../lib/geometry';
+import { Camera, Point, screenToWorld, snapToGrid } from '../lib/geometry';
 import { getNextZoomLevel } from '../lib/zoom';
+import Resistor, { ResistorData } from './Resistor';
 import styles from './CanvasViewport.module.css';
 
 interface CanvasViewportProps {
   onContextMenu: (x: number, y: number) => void;
+  selectedTool: string;
 }
 
 const GRID_SPACING = 20; // Grid spacing in world units
 const DOT_RADIUS = 1.5; // Radius of grid dots
 const DRAG_THRESHOLD = 5; // Pixels to distinguish click from drag
 
-export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
+export default function CanvasViewport({ onContextMenu, selectedTool }: CanvasViewportProps) {
   const [camera, setCamera] = useState<Camera>({
     offsetX: 400,
     offsetY: 300,
@@ -28,6 +30,8 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
   const [cursor, setCursor] = useState('default');
   const [mousePos, setMousePos] = useState<Point>({ x: 0, y: 0 });
   const [worldPos, setWorldPos] = useState<Point>({ x: 0, y: 0 });
+  const [resistors, setResistors] = useState<ResistorData[]>([]);
+  const [selectedResistorId, setSelectedResistorId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
@@ -50,6 +54,28 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
+
+  // Handle keyboard events for rotation
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'r' || e.key === 'R') {
+        if (selectedResistorId) {
+          setResistors(prev => prev.map(resistor => {
+            if (resistor.id === selectedResistorId) {
+              return {
+                ...resistor,
+                rotation: (resistor.rotation + 90) % 360
+              };
+            }
+            return resistor;
+          }));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [selectedResistorId]);
 
   // Render grid dots using a single Shape with custom drawing function
   const renderGrid = useCallback(() => {
@@ -146,8 +172,36 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
         panStartRef.current = pointer;
         cameraStartRef.current = { ...camera };
       }
+      
+      // Left mouse button for placing resistor or deselecting
+      if (e.evt.button === 0) {
+        // Check if clicking on empty canvas (not on a resistor)
+        const clickedOnEmpty = e.target === stage || e.target.getLayer();
+        
+        if (clickedOnEmpty) {
+          if (selectedTool === 'resistor') {
+            // Place a new resistor at grid-snapped position
+            const worldPoint = screenToWorld(pointer, camera);
+            const snappedPoint = snapToGrid(worldPoint, GRID_SPACING);
+            
+            const newResistor: ResistorData = {
+              id: `resistor-${Date.now()}-${Math.random()}`,
+              x: snappedPoint.x,
+              y: snappedPoint.y,
+              rotation: 0,
+              selected: false
+            };
+            
+            setResistors(prev => [...prev, newResistor]);
+          } else {
+            // Deselect all resistors
+            setSelectedResistorId(null);
+            setResistors(prev => prev.map(r => ({ ...r, selected: false })));
+          }
+        }
+      }
     },
-    [camera]
+    [camera, selectedTool]
   );
 
   // Handle mouse move
@@ -236,6 +290,30 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
     e.preventDefault();
   }, []);
 
+  // Handle resistor selection
+  const handleResistorSelect = useCallback((id: string) => {
+    setSelectedResistorId(id);
+    setResistors(prev => prev.map(resistor => ({
+      ...resistor,
+      selected: resistor.id === id
+    })));
+  }, []);
+
+  // Handle resistor drag end with grid snapping
+  const handleResistorDragEnd = useCallback((id: string, x: number, y: number) => {
+    const snappedPoint = snapToGrid({ x, y }, GRID_SPACING);
+    setResistors(prev => prev.map(resistor => {
+      if (resistor.id === id) {
+        return {
+          ...resistor,
+          x: snappedPoint.x,
+          y: snappedPoint.y
+        };
+      }
+      return resistor;
+    }));
+  }, []);
+
   return (
     <div 
       className={styles.canvasContainer} 
@@ -270,7 +348,15 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
           scaleX={camera.zoom}
           scaleY={camera.zoom}
         >
-          {/* Placeholder for schematic elements */}
+          {/* Render resistors */}
+          {resistors.map(resistor => (
+            <Resistor
+              key={resistor.id}
+              data={resistor}
+              onSelect={handleResistorSelect}
+              onDragEnd={handleResistorDragEnd}
+            />
+          ))}
         </Layer>
       </Stage>
 

@@ -35,7 +35,7 @@ export default function Home() {
       <MenuBar />
       <div className={styles.mainContent}>
         <LeftToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
-        <CanvasViewport onContextMenu={handleContextMenu} />
+        <CanvasViewport onContextMenu={handleContextMenu} selectedTool={selectedTool} />
         <RightToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
       </div>
       {contextMenu && (
