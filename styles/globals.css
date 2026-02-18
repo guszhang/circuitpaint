@@ -1,0 +1,31 @@
+/* Global styles for CircuitPaint */
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+  /* Prevent text selection globally */
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  font-size: 14px;
+}
+
+body {
+  background-color: #f0f0f0;
+}
+
+/* Ensure no scrollbars appear */
+#__next {
+  overflow: hidden;
+}

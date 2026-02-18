@@ -1,0 +1,23 @@
+.canvasContainer {
+  position: relative;
+  flex: 1;
+  background-color: #ffffff;
+  overflow: hidden;
+}
+
+.hud {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background-color: rgba(44, 62, 80, 0.85);
+  color: #ecf0f1;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  pointer-events: none;
+}
+
+.hud > div {
+  margin: 2px 0;
+}
