@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import MenuBar from '../components/MenuBar';
 import LeftToolbar from '../components/LeftToolbar';
 import RightToolbar from '../components/RightToolbar';
 import ContextMenu from '../components/ContextMenu';
 import styles from './page.module.css';
+import type { CanvasViewportControls } from '../components/CanvasViewport';
 
 // Dynamic import for CanvasViewport to disable SSR
 const CanvasViewport = dynamic(() => import('../components/CanvasViewport'), {
@@ -16,10 +17,16 @@ const CanvasViewport = dynamic(() => import('../components/CanvasViewport'), {
 export default function Home() {
   const [selectedTool, setSelectedTool] = useState<string>('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [showGrid, setShowGrid] = useState(true);
+  const viewportControlsRef = useRef<CanvasViewportControls | null>(null);
 
   const handleToolSelect = (tool: string) => {
     setSelectedTool(tool);
     console.log(`Tool selected: ${tool}`);
+  };
+
+  const handleToolComplete = () => {
+    setSelectedTool('');
   };
 
   const handleContextMenu = (x: number, y: number) => {
@@ -30,12 +37,35 @@ export default function Home() {
     setContextMenu(null);
   };
 
+  const handleToggleGrid = useCallback(() => {
+    setShowGrid((prev) => !prev);
+  }, []);
+
+  const handleRegisterViewportControls = useCallback((controls: CanvasViewportControls) => {
+    viewportControlsRef.current = controls;
+  }, []);
+
+  const handleZoomTo800 = useCallback(() => {
+    viewportControlsRef.current?.setZoomLevel(8);
+  }, []);
+
   return (
     <div className={styles.container}>
-      <MenuBar />
+      <MenuBar
+        onToggleGrid={handleToggleGrid}
+        gridVisible={showGrid}
+        onZoomTo800={handleZoomTo800}
+      />
       <div className={styles.mainContent}>
         <LeftToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
-        <CanvasViewport onContextMenu={handleContextMenu} />
+        <CanvasViewport
+          onContextMenu={handleContextMenu}
+          selectedTool={selectedTool}
+          onToggleGrid={handleToggleGrid}
+          showGrid={showGrid}
+          onToolComplete={handleToolComplete}
+          onRegisterViewportControls={handleRegisterViewportControls}
+        />
         <RightToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
       </div>
       {contextMenu && (

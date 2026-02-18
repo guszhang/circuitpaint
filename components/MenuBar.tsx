@@ -4,18 +4,32 @@ import React, { useState, useRef, useEffect } from 'react';
 import styles from './MenuBar.module.css';
 
 interface MenuBarProps {
-  // Props can be added here for callbacks
+  onToggleGrid?: () => void;
+  gridVisible?: boolean;
+  onZoomTo800?: () => void;
 }
 
-export default function MenuBar({}: MenuBarProps) {
+type MenuItem = string | { label: string; onSelect?: () => void };
+
+export default function MenuBar({ onToggleGrid, gridVisible = true, onZoomTo800 }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuBarRef = useRef<HTMLDivElement>(null);
 
-  const menus = {
+  const menus: Record<string, MenuItem[]> = {
     File: ['New', 'Open', 'Save', 'Save As', 'Export', 'Exit'],
     Edit: ['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Delete'],
     Draw: ['Line', 'Rectangle', 'Circle', 'Text'],
     Tool: ['Select', 'Wire', 'Component', 'Label'],
+    View: [
+      {
+        label: gridVisible ? 'Hide Grid' : 'Show Grid',
+        onSelect: onToggleGrid,
+      },
+      {
+        label: 'Zoom 800%',
+        onSelect: onZoomTo800,
+      },
+    ],
     Help: ['Documentation', 'About'],
   };
 
@@ -36,8 +50,12 @@ export default function MenuBar({}: MenuBarProps) {
     setActiveMenu(activeMenu === menuName ? null : menuName);
   };
 
-  const handleMenuItemClick = (menuName: string, item: string) => {
-    console.log(`Menu action: ${menuName} -> ${item}`);
+  const handleMenuItemClick = (menuName: string, item: MenuItem) => {
+    if (typeof item === 'string') {
+      console.log(`Menu action: ${menuName} -> ${item}`);
+    } else {
+      item.onSelect?.();
+    }
     setActiveMenu(null);
   };
 
@@ -55,15 +73,18 @@ export default function MenuBar({}: MenuBarProps) {
           </div>
           {activeMenu === menuName && (
             <div className={styles.dropdown}>
-              {items.map((item) => (
+              {items.map((item) => {
+                const label = typeof item === 'string' ? item : item.label;
+                return (
                 <div
-                  key={item}
+                  key={label}
                   className={styles.menuItem}
                   onClick={() => handleMenuItemClick(menuName, item)}
                 >
-                  {item}
+                  {label}
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>

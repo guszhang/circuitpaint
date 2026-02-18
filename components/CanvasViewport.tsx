@@ -1,22 +1,48 @@
 'use client';
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { Stage, Layer, Shape } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
-import { getNextZoomLevel } from '../lib/zoom';
+import { getNextZoomLevel, clampZoom } from '../lib/zoom';
 import styles from './CanvasViewport.module.css';
+import ResistorSymbol, { ResistorRotation } from './ResistorSymbol';
 
 interface CanvasViewportProps {
   onContextMenu: (x: number, y: number) => void;
+  selectedTool?: string;
+  onToolComplete?: () => void;
+  showGrid?: boolean;
+  onToggleGrid?: () => void;
+  onRegisterViewportControls?: (controls: CanvasViewportControls) => void;
+}
+
+export interface CanvasViewportControls {
+  setZoomLevel: (zoom: number) => void;
 }
 
 const GRID_SPACING = 20; // Grid spacing in world units
 const DOT_RADIUS = 1.5; // Radius of grid dots
 const DRAG_THRESHOLD = 5; // Pixels to distinguish click from drag
 
-export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
+interface Resistor {
+  id: string;
+  x: number;
+  y: number;
+  rotation: ResistorRotation;
+}
+
+const snapToGrid = (value: number) => Math.round(value / GRID_SPACING) * GRID_SPACING;
+
+export default function CanvasViewport({
+  onContextMenu,
+  selectedTool,
+  onToolComplete,
+  showGrid = true,
+  onToggleGrid,
+  onRegisterViewportControls,
+}: CanvasViewportProps) {
   const [camera, setCamera] = useState<Camera>({
     offsetX: 400,
     offsetY: 300,
@@ -28,12 +54,46 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
   const [cursor, setCursor] = useState('default');
   const [mousePos, setMousePos] = useState<Point>({ x: 0, y: 0 });
   const [worldPos, setWorldPos] = useState<Point>({ x: 0, y: 0 });
+  const [resistors, setResistors] = useState<Resistor[]>([]);
+  const [selectedResistorId, setSelectedResistorId] = useState<string | null>(null);
+  const [hoverWorldPos, setHoverWorldPos] = useState<Point | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const panStartRef = useRef<Point | null>(null);
   const rightMouseDownPosRef = useRef<Point | null>(null);
   const cameraStartRef = useRef<Camera | null>(null);
+
+  const isResistorToolActive = selectedTool === 'resistor';
+  const shouldShowGrid = showGrid !== false;
+
+  const setZoomLevel = useCallback((targetZoom: number) => {
+    const clamped = clampZoom(targetZoom);
+    setCamera((prev) => {
+      const stage = stageRef.current;
+      if (!stage) {
+        return { ...prev, zoom: clamped };
+      }
+
+      const stageCenter = {
+        x: stage.width() / 2,
+        y: stage.height() / 2,
+      };
+
+      const worldCenter = {
+        x: (stageCenter.x - prev.offsetX) / prev.zoom,
+        y: (stageCenter.y - prev.offsetY) / prev.zoom,
+      };
+
+      return {
+        offsetX: stageCenter.x - worldCenter.x * clamped,
+        offsetY: stageCenter.y - worldCenter.y * clamped,
+        zoom: clamped,
+      };
+    });
+  }, []);
+
+  const viewportControls = useMemo<CanvasViewportControls>(() => ({ setZoomLevel }), [setZoomLevel]);
 
   // Update stage size on mount and resize
   useEffect(() => {
@@ -50,6 +110,12 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
     window.addEventListener('resize', updateSize);
     return () => window.removeEventListener('resize', updateSize);
   }, []);
+
+  useEffect(() => {
+    if (onRegisterViewportControls) {
+      onRegisterViewportControls(viewportControls);
+    }
+  }, [onRegisterViewportControls, viewportControls]);
 
   // Render grid dots using a single Shape with custom drawing function
   const renderGrid = useCallback(() => {
@@ -139,6 +205,42 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
       const pointer = stage.getPointerPosition();
       if (!pointer) return;
 
+      if (e.evt.button === 0) {
+        const targetClass = e.target.getClassName();
+        const clickedOnCanvas = e.target === stage || targetClass === 'Layer';
+
+        if (isResistorToolActive) {
+          const world = screenToWorld(pointer, camera);
+          const snappedX = snapToGrid(world.x);
+          const snappedY = snapToGrid(world.y);
+          setHoverWorldPos({ x: snappedX, y: snappedY });
+        }
+
+        if (!clickedOnCanvas) {
+          return;
+        }
+
+        if (isResistorToolActive) {
+          const world = screenToWorld(pointer, camera);
+          const snappedX = snapToGrid(world.x);
+          const snappedY = snapToGrid(world.y);
+          const newResistor: Resistor = {
+            id: `res-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            x: snappedX,
+            y: snappedY,
+            rotation: 0,
+          };
+          setResistors((prev) => [...prev, newResistor]);
+          setSelectedResistorId(newResistor.id);
+          setHoverWorldPos({ x: snappedX, y: snappedY });
+          stage.batchDraw();
+          onToolComplete?.();
+        } else {
+          setSelectedResistorId(null);
+        }
+        return;
+      }
+
       // Right mouse button for panning
       if (e.evt.button === 2) {
         e.evt.preventDefault();
@@ -147,7 +249,7 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
         cameraStartRef.current = { ...camera };
       }
     },
-    [camera]
+    [camera, isResistorToolActive, onToolComplete]
   );
 
   // Handle mouse move
@@ -163,6 +265,14 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
       setMousePos(pointer);
       const world = screenToWorld(pointer, camera);
       setWorldPos(world);
+
+      if (isResistorToolActive) {
+        const snapped = {
+          x: snapToGrid(world.x),
+          y: snapToGrid(world.y),
+        };
+        setHoverWorldPos(snapped);
+      }
 
       // Handle panning
       if (panStartRef.current && cameraStartRef.current && rightMouseDownPosRef.current) {
@@ -189,7 +299,7 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
         }
       }
     },
-    [camera, isPanning]
+    [camera, isPanning, isResistorToolActive]
   );
 
   // Handle mouse up
@@ -226,6 +336,89 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
     [onContextMenu]
   );
 
+  const handleResistorMouseDown = useCallback((resistorId: string) => {
+    return (e: KonvaEventObject<MouseEvent>) => {
+      e.cancelBubble = true;
+      setSelectedResistorId(resistorId);
+    };
+  }, []);
+
+  const handleResistorDragStart = useCallback((e: KonvaEventObject<DragEvent>) => {
+    e.cancelBubble = true;
+  }, []);
+
+  const handleResistorDragEnd = useCallback((resistorId: string) => {
+    return (e: KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true;
+      const { x, y } = e.target.position();
+      const snapped = {
+        x: snapToGrid(x),
+        y: snapToGrid(y),
+      };
+      e.target.position(snapped);
+      setResistors((prev) =>
+        prev.map((resistor) =>
+          resistor.id === resistorId
+            ? { ...resistor, x: snapped.x, y: snapped.y }
+            : resistor
+        )
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (target) {
+        const tagName = target.tagName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+      }
+
+      const key = event.key.toLowerCase();
+
+      if (key === 'g') {
+        if (onToggleGrid) {
+          event.preventDefault();
+          onToggleGrid();
+        }
+        return;
+      }
+
+      if (key === 'r') {
+        if (!selectedResistorId) {
+          return;
+        }
+
+        event.preventDefault();
+        setResistors((prev) =>
+          prev.map((resistor) =>
+            resistor.id === selectedResistorId
+              ? {
+                  ...resistor,
+                  rotation: (((resistor.rotation + 90) % 360) as ResistorRotation),
+                }
+              : resistor
+          )
+        );
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onToggleGrid, selectedResistorId]);
+
+  useEffect(() => {
+    if (!isResistorToolActive) {
+      setHoverWorldPos(null);
+    }
+  }, [isResistorToolActive]);
+
+  const handleMouseLeave = useCallback(() => {
+    setHoverWorldPos(null);
+  }, []);
+
   // Prevent context menu
   const handleContextMenuEvent = useCallback((e: KonvaEventObject<PointerEvent>) => {
     e.evt.preventDefault();
@@ -249,6 +442,7 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
         onContextMenu={handleContextMenuEvent}
         ref={stageRef}
         style={{ cursor }}
@@ -260,7 +454,7 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
           scaleX={camera.zoom}
           scaleY={camera.zoom}
         >
-          {renderGrid()}
+          {shouldShowGrid && renderGrid()}
         </Layer>
 
         {/* Future: Schematic items layer */}
@@ -270,7 +464,31 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
           scaleX={camera.zoom}
           scaleY={camera.zoom}
         >
-          {/* Placeholder for schematic elements */}
+          {resistors.map((resistor) => (
+            <ResistorSymbol
+              key={resistor.id}
+              x={resistor.x}
+              y={resistor.y}
+              rotation={resistor.rotation}
+              isSelected={selectedResistorId === resistor.id}
+              draggable={selectedResistorId === resistor.id}
+              onMouseDown={handleResistorMouseDown(resistor.id)}
+              onDragStart={handleResistorDragStart}
+              onDragEnd={handleResistorDragEnd(resistor.id)}
+            />
+          ))}
+          {isResistorToolActive && hoverWorldPos && (
+            <ResistorSymbol
+              x={hoverWorldPos.x}
+              y={hoverWorldPos.y}
+              rotation={0}
+              isSelected={false}
+              draggable={false}
+              strokeColor="#888888"
+              opacity={0.6}
+              listening={false}
+            />
+          )}
         </Layer>
       </Stage>
 
