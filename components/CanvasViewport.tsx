@@ -73,12 +73,13 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
           const dotRadius = DOT_RADIUS / camera.zoom;
           context.fillStyle = '#a0a0a0';
           
-          // Draw all dots in a single canvas operation
+          // Draw all dots - each arc needs to be independent
           for (let x = minX; x <= maxX; x++) {
             for (let y = minY; y <= maxY; y++) {
               const worldX = x * GRID_SPACING;
               const worldY = y * GRID_SPACING;
               
+              // Start a new path for each dot to keep them independent
               context.beginPath();
               context.arc(worldX, worldY, dotRadius, 0, Math.PI * 2);
               context.fill();
