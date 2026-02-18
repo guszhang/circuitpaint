@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { Stage, Layer, Circle } from 'react-konva';
+import { Stage, Layer, Shape } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
@@ -51,10 +51,8 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
     return () => window.removeEventListener('resize', updateSize);
   }, []);
 
-  // Render grid dots
+  // Render grid dots using a single Shape with custom drawing function
   const renderGrid = useCallback(() => {
-    const dots: JSX.Element[] = [];
-    
     // Calculate visible world bounds
     const topLeft = screenToWorld({ x: 0, y: 0 }, camera);
     const bottomRight = screenToWorld(
@@ -68,27 +66,31 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
     const minY = Math.floor(topLeft.y / GRID_SPACING) - 1;
     const maxY = Math.ceil(bottomRight.y / GRID_SPACING) + 1;
 
-    // Generate dots
-    for (let x = minX; x <= maxX; x++) {
-      for (let y = minY; y <= maxY; y++) {
-        const worldX = x * GRID_SPACING;
-        const worldY = y * GRID_SPACING;
-        const key = `dot-${x}-${y}`;
-        
-        dots.push(
-          <Circle
-            key={key}
-            x={worldX}
-            y={worldY}
-            radius={DOT_RADIUS / camera.zoom}
-            fill="#a0a0a0"
-            listening={false}
-          />
-        );
-      }
-    }
-
-    return dots;
+    // Use a single Shape node with custom sceneFunc for performance
+    return (
+      <Shape
+        sceneFunc={(context, shape) => {
+          const dotRadius = DOT_RADIUS / camera.zoom;
+          context.fillStyle = '#a0a0a0';
+          
+          // Draw all dots in a single canvas operation
+          for (let x = minX; x <= maxX; x++) {
+            for (let y = minY; y <= maxY; y++) {
+              const worldX = x * GRID_SPACING;
+              const worldY = y * GRID_SPACING;
+              
+              context.beginPath();
+              context.arc(worldX, worldY, dotRadius, 0, Math.PI * 2);
+              context.fill();
+            }
+          }
+          
+          // Required to complete the shape rendering
+          context.fillStrokeShape(shape);
+        }}
+        listening={false}
+      />
+    );
   }, [camera, stageSize]);
 
   // Handle wheel zoom
@@ -228,8 +230,17 @@ export default function CanvasViewport({ onContextMenu }: CanvasViewportProps) {
     e.evt.preventDefault();
   }, []);
 
+  // Prevent browser default context menu on the container
+  const handleContainerContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+  }, []);
+
   return (
-    <div className={styles.canvasContainer} ref={containerRef}>
+    <div 
+      className={styles.canvasContainer} 
+      ref={containerRef}
+      onContextMenu={handleContainerContextMenu}
+    >
       <Stage
         width={stageSize.width}
         height={stageSize.height}
