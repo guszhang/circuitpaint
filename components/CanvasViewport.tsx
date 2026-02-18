@@ -175,10 +175,10 @@ export default function CanvasViewport({ onContextMenu, selectedTool }: CanvasVi
       
       // Left mouse button for placing resistor or deselecting
       if (e.evt.button === 0) {
-        // Check if clicking on empty canvas (not on a resistor)
-        const clickedOnEmpty = e.target === stage || e.target.getLayer();
+        // Check if clicking on canvas background (not on a resistor)
+        const clickedOnBackground = e.target === stage || e.target.getLayer();
         
-        if (clickedOnEmpty) {
+        if (clickedOnBackground) {
           if (selectedTool === 'resistor') {
             // Place a new resistor at grid-snapped position
             const worldPoint = screenToWorld(pointer, camera);

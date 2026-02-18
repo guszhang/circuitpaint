@@ -8,7 +8,7 @@ export interface ResistorData {
   id: string;
   x: number;
   y: number;
-  rotation: number; // 0, 90, 180, 270
+  rotation: number; // Rotation angle in degrees (typically 0, 90, 180, 270)
   selected: boolean;
 }
 
