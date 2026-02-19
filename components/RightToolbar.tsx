@@ -2,22 +2,17 @@
 
 import React from 'react';
 import styles from './RightToolbar.module.css';
+import { getToolsByGroup, type ToolId } from '../lib/tools';
 
 interface RightToolbarProps {
-  onToolSelect?: (tool: string) => void;
-  selectedTool?: string;
+  onToolSelect?: (tool: ToolId) => void;
+  selectedTool?: ToolId | '';
 }
 
 export default function RightToolbar({ onToolSelect, selectedTool }: RightToolbarProps) {
-  const tools = [
-    { id: 'wire', label: 'Wire' },
-    { id: 'bus', label: 'Bus' },
-    { id: 'label', label: 'Label' },
-    { id: 'text', label: 'Text' },
-    { id: 'note', label: 'Note' },
-  ];
+  const tools = getToolsByGroup('drawing');
 
-  const handleToolClick = (toolId: string) => {
+  const handleToolClick = (toolId: ToolId) => {
     if (onToolSelect) {
       onToolSelect(toolId);
     }

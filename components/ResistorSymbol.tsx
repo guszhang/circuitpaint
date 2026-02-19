@@ -17,6 +17,7 @@ interface ResistorSymbolProps {
   listening?: boolean;
   onMouseDown?: (e: KonvaEventObject<MouseEvent>) => void;
   onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
+  onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }
 
@@ -31,6 +32,7 @@ export default function ResistorSymbol({
   listening = true,
   onMouseDown,
   onDragStart,
+  onDragMove,
   onDragEnd,
 }: ResistorSymbolProps) {
   const lineColor = strokeColor ?? 'black';
@@ -45,6 +47,7 @@ export default function ResistorSymbol({
       opacity={opacity}
       onMouseDown={onMouseDown}
       onDragStart={onDragStart}
+      onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
       <Rect

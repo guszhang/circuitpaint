@@ -7,17 +7,40 @@ interface MenuBarProps {
   onToggleGrid?: () => void;
   gridVisible?: boolean;
   onZoomTo800?: () => void;
+  onEditUndo?: () => void;
+  onEditRedo?: () => void;
+  onEditCut?: () => void;
+  onEditCopy?: () => void;
+  onEditPaste?: () => void;
+  onEditDelete?: () => void;
 }
 
 type MenuItem = string | { label: string; onSelect?: () => void };
 
-export default function MenuBar({ onToggleGrid, gridVisible = true, onZoomTo800 }: MenuBarProps) {
+export default function MenuBar({
+  onToggleGrid,
+  gridVisible = true,
+  onZoomTo800,
+  onEditUndo,
+  onEditRedo,
+  onEditCut,
+  onEditCopy,
+  onEditPaste,
+  onEditDelete,
+}: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuBarRef = useRef<HTMLDivElement>(null);
 
   const menus: Record<string, MenuItem[]> = {
     File: ['New', 'Open', 'Save', 'Save As', 'Export', 'Exit'],
-    Edit: ['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Delete'],
+    Edit: [
+      { label: 'Undo', onSelect: onEditUndo },
+      { label: 'Redo', onSelect: onEditRedo },
+      { label: 'Cut', onSelect: onEditCut },
+      { label: 'Copy', onSelect: onEditCopy },
+      { label: 'Paste', onSelect: onEditPaste },
+      { label: 'Delete', onSelect: onEditDelete },
+    ],
     Draw: ['Line', 'Rectangle', 'Circle', 'Text'],
     Tool: ['Select', 'Wire', 'Component', 'Label'],
     View: [

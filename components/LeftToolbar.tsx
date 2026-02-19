@@ -1,26 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import styles from './LeftToolbar.module.css';
+import { getToolsByGroup, type ToolId } from '../lib/tools';
 
 interface LeftToolbarProps {
-  onToolSelect?: (tool: string) => void;
-  selectedTool?: string;
+  onToolSelect?: (tool: ToolId) => void;
+  selectedTool?: ToolId | '';
 }
 
 export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarProps) {
-  const tools = [
-    { id: 'resistor', label: 'Resistor' },
-    { id: 'capacitor', label: 'Capacitor' },
-    { id: 'inductor', label: 'Inductor' },
-    { id: 'diode', label: 'Diode' },
-    { id: 'transistor', label: 'Transistor' },
-    { id: 'ic', label: 'IC' },
-    { id: 'ground', label: 'Ground' },
-    { id: 'power', label: 'Power' },
-  ];
+  const tools = getToolsByGroup('component');
 
-  const handleToolClick = (toolId: string) => {
+  const handleToolClick = (toolId: ToolId) => {
     if (onToolSelect) {
       onToolSelect(toolId);
     }
