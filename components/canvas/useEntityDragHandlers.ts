@@ -3,7 +3,6 @@ import type { MutableRefObject } from 'react';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { Point } from '../../lib/geometry';
 import type { ToolId } from '../../lib/tools';
-import { snapToGrid } from './grid';
 import type { ComponentEntity, DrawingEntity, SceneData, WireEntity } from './types';
 
 interface UseEntityDragHandlersParams {
@@ -13,17 +12,17 @@ interface UseEntityDragHandlersParams {
   components: ComponentEntity[];
   drawings: DrawingEntity[];
   wires: WireEntity[];
+  getSelection: () => {
+    componentIds: string[];
+    drawingIds: string[];
+    wireIds: string[];
+  };
   makeDragKey: (kind: 'component' | 'drawing' | 'wire', id: string) => string;
   dragStartPositionsRef: MutableRefObject<Map<string, Point> | null>;
   wireDragStartPointsRef: MutableRefObject<Map<string, Point> | null>;
   dragAnchorIdRef: MutableRefObject<string | null>;
   dragHistoryCapturedRef: MutableRefObject<boolean>;
   updateScene: (updater: (prev: SceneData) => SceneData, recordHistory?: boolean) => void;
-  ensureSelection: (id: string) => {
-    nextComponentIds: string[];
-    nextDrawingIds: string[];
-    nextWireIds: string[];
-  };
   entityKind: 'component' | 'drawing' | 'wire';
 }
 
@@ -34,13 +33,13 @@ export function useEntityDragHandlers({
   components,
   drawings,
   wires,
+  getSelection,
   makeDragKey,
   dragStartPositionsRef,
   wireDragStartPointsRef,
   dragAnchorIdRef,
   dragHistoryCapturedRef,
   updateScene,
-  ensureSelection,
   entityKind,
 }: UseEntityDragHandlersParams) {
   const handleDragStart = useCallback(
@@ -51,7 +50,18 @@ export function useEntityDragHandlers({
 
         captureDragHistory();
 
-        const { nextComponentIds, nextDrawingIds, nextWireIds } = ensureSelection(id);
+        const selection = getSelection();
+        let nextComponentIds = selection.componentIds;
+        let nextDrawingIds = selection.drawingIds;
+        let nextWireIds = selection.wireIds;
+
+        if (entityKind === 'component' && !nextComponentIds.includes(id)) {
+          nextComponentIds = [...nextComponentIds, id];
+        } else if (entityKind === 'drawing' && !nextDrawingIds.includes(id)) {
+          nextDrawingIds = [...nextDrawingIds, id];
+        } else if (entityKind === 'wire' && !nextWireIds.includes(id)) {
+          nextWireIds = [...nextWireIds, id];
+        }
 
         const snapshot = new Map<string, Point>();
         components.forEach((component) => {
@@ -81,7 +91,6 @@ export function useEntityDragHandlers({
       captureDragHistory,
       components,
       drawings,
-      ensureSelection,
       entityKind,
       isPasteMode,
       makeDragKey,
@@ -160,10 +169,6 @@ export function useEntityDragHandlers({
 
         const { x, y } = e.target.position();
         const delta = { x: x - anchorStart.x, y: y - anchorStart.y };
-        const snappedDelta = {
-          x: snapToGrid(anchorStart.x + delta.x) - anchorStart.x,
-          y: snapToGrid(anchorStart.y + delta.y) - anchorStart.y,
-        };
 
         updateScene((prev) => ({
           ...prev,
@@ -172,8 +177,8 @@ export function useEntityDragHandlers({
             if (!start) return component;
             return {
               ...component,
-              x: snapToGrid(start.x + snappedDelta.x),
-              y: snapToGrid(start.y + snappedDelta.y),
+              x: start.x + delta.x,
+              y: start.y + delta.y,
             };
           }),
           drawings: prev.drawings.map((drawing) => {
@@ -181,8 +186,8 @@ export function useEntityDragHandlers({
             if (!start) return drawing;
             return {
               ...drawing,
-              x: snapToGrid(start.x + snappedDelta.x),
-              y: snapToGrid(start.y + snappedDelta.y),
+              x: start.x + delta.x,
+              y: start.y + delta.y,
             };
           }),
           wires: (() => {
@@ -195,8 +200,8 @@ export function useEntityDragHandlers({
               if (!start) return wire;
               return {
                 ...wire,
-                x: snapToGrid(start.x + snappedDelta.x),
-                y: snapToGrid(start.y + snappedDelta.y),
+                x: start.x + delta.x,
+                y: start.y + delta.y,
               };
             });
           })(),

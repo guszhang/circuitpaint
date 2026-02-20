@@ -12,7 +12,6 @@ const TOOL_GROUP_CONFIG = {
   drawing: [
     { id: 'joint', label: 'Joint' },
     { id: 'wire', label: 'Wire' },
-    { id: 'bus', label: 'Bus' },
     { id: 'label', label: 'Label' },
     { id: 'text', label: 'Text' },
     { id: 'note', label: 'Note' },

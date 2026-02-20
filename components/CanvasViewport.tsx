@@ -22,11 +22,16 @@ import {
   type SceneData,
   type WireEntity,
 } from './canvas/types';
-import { useComponentEventHandlers } from './canvas/useComponentEventHandlers';
-import { useDrawingEventHandlers } from './canvas/useDrawingEventHandlers';
-import { useWireEventHandlers } from './canvas/useWireEventHandlers';
+import { useInteractionTriage } from './canvas/useInteractionTriage';
 import styles from './CanvasViewport.module.css';
-import ResistorSymbol, { type ResistorRotation } from './ResistorSymbol';
+import ResistorSymbol, { type ResistorRotation } from './symbols/ResistorSymbol';
+import CapacitorSymbol from './symbols/CapacitorSymbol';
+import InductorSymbol from './symbols/InductorSymbol';
+import DiodeSymbol from './symbols/DiodeSymbol';
+import TransistorSymbol from './symbols/TransistorSymbol';
+import IcSymbol from './symbols/IcSymbol';
+import GroundSymbol from './symbols/GroundSymbol';
+import PowerSymbol from './symbols/PowerSymbol';
 
 interface CanvasViewportProps {
   onContextMenu: (x: number, y: number) => void;
@@ -172,6 +177,7 @@ function ComponentGlyph({
   strokeColor = 'black',
   opacity = 1,
   onMouseDown,
+  dragBoundFunc,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -186,81 +192,44 @@ function ComponentGlyph({
   strokeColor?: string;
   opacity?: number;
   onMouseDown?: (e: KonvaEventObject<MouseEvent>) => void;
+  dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
   onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }) {
-  if (toolId === 'resistor') {
-    return (
-      <ResistorSymbol
-        x={x}
-        y={y}
-        rotation={rotation as ResistorRotation}
-        isSelected={isSelected}
-        draggable={draggable}
-        listening={listening}
-        strokeColor={strokeColor}
-        opacity={opacity}
-        onMouseDown={onMouseDown}
-        onDragStart={onDragStart}
-        onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
-      />
-    );
-  }
-
-  const glyphLabel: Record<Exclude<ComponentToolId, 'resistor'>, string> = {
-    capacitor: 'C',
-    inductor: 'L',
-    diode: 'D',
-    transistor: 'Q',
-    ic: 'IC',
-    ground: 'GND',
-    power: 'V+',
-  };
+  const SymbolComponent =
+    toolId === 'resistor'
+      ? ResistorSymbol
+      : toolId === 'capacitor'
+        ? CapacitorSymbol
+        : toolId === 'inductor'
+          ? InductorSymbol
+          : toolId === 'diode'
+            ? DiodeSymbol
+            : toolId === 'transistor'
+              ? TransistorSymbol
+              : toolId === 'ic'
+                ? IcSymbol
+                : toolId === 'ground'
+                  ? GroundSymbol
+                  : PowerSymbol;
 
   return (
-    <Group
+    <SymbolComponent
       x={x}
       y={y}
-      rotation={rotation}
+      rotation={rotation as ResistorRotation}
+      isSelected={isSelected}
       draggable={draggable}
       listening={listening}
+      strokeColor={strokeColor}
       opacity={opacity}
       onMouseDown={onMouseDown}
+      dragBoundFunc={dragBoundFunc}
       onDragStart={onDragStart}
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
-    >
-      <Rect x={-20} y={-14} width={40} height={28} fill="black" opacity={0} />
-      {isSelected && (
-        <Rect
-          x={-20}
-          y={-14}
-          width={40}
-          height={28}
-          stroke="#4f80ff"
-          strokeWidth={1}
-          dash={[4, 4]}
-          listening={false}
-        />
-      )}
-      <Line points={[-24, 0, -12, 0]} stroke={strokeColor} strokeWidth={1.4} />
-      <Line points={[12, 0, 24, 0]} stroke={strokeColor} strokeWidth={1.4} />
-      <Rect x={-12} y={-8} width={24} height={16} stroke={strokeColor} strokeWidth={1.4} />
-      <Text
-        x={-11}
-        y={-6}
-        width={22}
-        height={12}
-        fontSize={8}
-        align="center"
-        verticalAlign="middle"
-        text={glyphLabel[toolId]}
-        fill={strokeColor}
-        listening={false}
-      />
-    </Group>
+    />
   );
 }
 
@@ -272,6 +241,7 @@ function DrawingGlyph({
   strokeColor = 'black',
   opacity = 1,
   onMouseDown,
+  dragBoundFunc,
   onDragStart,
   onDragMove,
   onDragEnd,
@@ -283,6 +253,7 @@ function DrawingGlyph({
   strokeColor?: string;
   opacity?: number;
   onMouseDown?: (e: KonvaEventObject<MouseEvent>) => void;
+  dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
   onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
@@ -295,6 +266,7 @@ function DrawingGlyph({
         draggable={draggable}
         listening={listening}
         opacity={opacity}
+        dragBoundFunc={dragBoundFunc}
         onMouseDown={onMouseDown}
         onDragStart={onDragStart}
         onDragMove={onDragMove}
@@ -316,7 +288,6 @@ function DrawingGlyph({
   }
 
   const glyphLabel: Record<Exclude<NonWireDrawingToolId, 'joint'>, string> = {
-    bus: 'BUS',
     label: 'LBL',
     text: 'TXT',
     note: 'NOTE',
@@ -330,6 +301,7 @@ function DrawingGlyph({
       draggable={draggable}
       listening={listening}
       opacity={opacity}
+      dragBoundFunc={dragBoundFunc}
       onMouseDown={onMouseDown}
       onDragStart={onDragStart}
       onDragMove={onDragMove}
@@ -388,10 +360,14 @@ export default function CanvasViewport({
     wires: [],
   });
   const [wireDraft, setWireDraft] = useState<Point[] | null>(null);
+  const [isWirePointDragging, setIsWirePointDragging] = useState(false);
 
   const [selectedComponentIds, setSelectedComponentIds] = useState<string[]>([]);
   const [selectedDrawingIds, setSelectedDrawingIds] = useState<string[]>([]);
   const [selectedWireIds, setSelectedWireIds] = useState<string[]>([]);
+  const selectedComponentIdsRef = useRef<string[]>([]);
+  const selectedDrawingIdsRef = useRef<string[]>([]);
+  const selectedWireIdsRef = useRef<string[]>([]);
   const [clipboard, setClipboard] = useState<ClipboardData | null>(null);
   const [isPasteMode, setIsPasteMode] = useState(false);
 
@@ -412,10 +388,12 @@ export default function CanvasViewport({
   const rightMouseDownPosRef = useRef<Point | null>(null);
   const cameraStartRef = useRef<Camera | null>(null);
 
-  const dragStartPositionsRef = useRef<Map<string, Point> | null>(null);
-  const wireDragStartPointsRef = useRef<Map<string, Point> | null>(null);
-  const dragAnchorIdRef = useRef<string | null>(null);
   const dragHistoryCapturedRef = useRef(false);
+  const dragSnapshotRef = useRef<{
+    components: Map<string, Point>;
+    drawings: Map<string, Point>;
+    wires: Map<string, Point>;
+  } | null>(null);
   const sceneRef = useRef<SceneData>(scene);
   const undoStackRef = useRef<SceneData[]>([]);
   const redoStackRef = useRef<SceneData[]>([]);
@@ -429,18 +407,35 @@ export default function CanvasViewport({
   const selectedDrawingSet = useMemo(() => new Set(selectedDrawingIds), [selectedDrawingIds]);
   const selectedWireSet = useMemo(() => new Set(selectedWireIds), [selectedWireIds]);
 
+  useEffect(() => {
+    selectedComponentIdsRef.current = selectedComponentIds;
+  }, [selectedComponentIds]);
+
+  useEffect(() => {
+    selectedDrawingIdsRef.current = selectedDrawingIds;
+  }, [selectedDrawingIds]);
+
+  useEffect(() => {
+    selectedWireIdsRef.current = selectedWireIds;
+  }, [selectedWireIds]);
+
   const shouldShowGrid = showGrid !== false;
 
-  const makeDragKey = useCallback(
-    (kind: 'component' | 'drawing' | 'wire', id: string) => `${kind}:${id}`,
+  const applySelection = useCallback(
+    (selection: { componentIds: string[]; drawingIds: string[]; wireIds: string[] }) => {
+      selectedComponentIdsRef.current = selection.componentIds;
+      selectedDrawingIdsRef.current = selection.drawingIds;
+      selectedWireIdsRef.current = selection.wireIds;
+      setSelectedComponentIds(selection.componentIds);
+      setSelectedDrawingIds(selection.drawingIds);
+      setSelectedWireIds(selection.wireIds);
+    },
     []
   );
 
   const clearSelection = useCallback(() => {
-    setSelectedComponentIds([]);
-    setSelectedDrawingIds([]);
-    setSelectedWireIds([]);
-  }, []);
+    applySelection({ componentIds: [], drawingIds: [], wireIds: [] });
+  }, [applySelection]);
 
   const updateScene = useCallback(
     (updater: (prev: SceneData) => SceneData, recordHistory = true) => {
@@ -469,86 +464,234 @@ export default function CanvasViewport({
     dragHistoryCapturedRef.current = true;
   }, []);
 
-  const {
-    handleComponentMouseDown,
-    handleComponentDragStart,
-    handleComponentDragMove,
-    handleComponentDragEnd,
-  } = useComponentEventHandlers({
-    selectedTool,
-    isPasteMode,
-    selectedComponentSet,
-    selectedComponentIds,
-    selectedDrawingIds,
-    selectedWireIds,
-    setSelectedComponentIds,
-    setSelectedDrawingIds,
-    setSelectedWireIds,
-    captureDragHistory,
-    components,
-    drawings,
-    wires,
-    makeDragKey,
-    dragStartPositionsRef,
-    wireDragStartPointsRef,
-    dragAnchorIdRef,
-    dragHistoryCapturedRef,
-    updateScene,
+  const updateSelectionForEntity = useCallback(
+    (kind: 'component' | 'drawing' | 'wire', id: string, modifiers: { toggle: boolean; additive: boolean }) => {
+      const current = {
+        componentIds: selectedComponentIdsRef.current,
+        drawingIds: selectedDrawingIdsRef.current,
+        wireIds: selectedWireIdsRef.current,
+      };
+
+      const updateList = (list: string[]) => {
+        if (modifiers.toggle) {
+          return list.includes(id) ? list.filter((item) => item !== id) : [...list, id];
+        }
+        if (modifiers.additive) {
+          return list.includes(id) ? list : [...list, id];
+        }
+        return [id];
+      };
+
+      if (!modifiers.toggle && !modifiers.additive) {
+        if (kind === 'component') {
+          if (current.componentIds.includes(id)) {
+            return;
+          }
+          applySelection({ componentIds: [id], drawingIds: [], wireIds: [] });
+        } else if (kind === 'drawing') {
+          if (current.drawingIds.includes(id)) {
+            return;
+          }
+          applySelection({ componentIds: [], drawingIds: [id], wireIds: [] });
+        } else {
+          if (current.wireIds.includes(id)) {
+            return;
+          }
+          applySelection({ componentIds: [], drawingIds: [], wireIds: [id] });
+        }
+        return;
+      }
+
+      if (kind === 'component') {
+        applySelection({
+          componentIds: updateList(current.componentIds),
+          drawingIds: current.drawingIds,
+          wireIds: current.wireIds,
+        });
+      } else if (kind === 'drawing') {
+        applySelection({
+          componentIds: current.componentIds,
+          drawingIds: updateList(current.drawingIds),
+          wireIds: current.wireIds,
+        });
+      } else {
+        applySelection({
+          componentIds: current.componentIds,
+          drawingIds: current.drawingIds,
+          wireIds: updateList(current.wireIds),
+        });
+      }
+    },
+    [applySelection]
+  );
+
+  const interactionTriage = useInteractionTriage({
+    dragThreshold: DRAG_THRESHOLD,
+    onEntityMouseDown: updateSelectionForEntity,
+    onEntityDragStart: ({ startWorld }) => {
+      captureDragHistory();
+      const selection = {
+        componentIds: selectedComponentIdsRef.current,
+        drawingIds: selectedDrawingIdsRef.current,
+        wireIds: selectedWireIdsRef.current,
+      };
+
+      const snapshot = {
+        components: new Map<string, Point>(),
+        drawings: new Map<string, Point>(),
+        wires: new Map<string, Point>(),
+      };
+
+      sceneRef.current.components.forEach((component) => {
+        if (selection.componentIds.includes(component.id)) {
+          snapshot.components.set(component.id, { x: component.x, y: component.y });
+        }
+      });
+      sceneRef.current.drawings.forEach((drawing) => {
+        if (selection.drawingIds.includes(drawing.id)) {
+          snapshot.drawings.set(drawing.id, { x: drawing.x, y: drawing.y });
+        }
+      });
+      sceneRef.current.wires.forEach((wire) => {
+        if (selection.wireIds.includes(wire.id)) {
+          snapshot.wires.set(wire.id, { x: wire.x, y: wire.y });
+        }
+      });
+
+      dragSnapshotRef.current = snapshot;
+    },
+    onEntityDragMove: ({ world, startWorld }) => {
+      const snapshot = dragSnapshotRef.current;
+      if (!snapshot) return;
+
+      const snappedWorld = { x: snapToGrid(world.x), y: snapToGrid(world.y) };
+      const snappedStart = { x: snapToGrid(startWorld.x), y: snapToGrid(startWorld.y) };
+      const delta = {
+        x: snappedWorld.x - snappedStart.x,
+        y: snappedWorld.y - snappedStart.y,
+      };
+
+      updateScene((prev) => ({
+        ...prev,
+        components: prev.components.map((component) => {
+          const start = snapshot.components.get(component.id);
+          if (!start) return component;
+          return { ...component, x: start.x + delta.x, y: start.y + delta.y };
+        }),
+        drawings: prev.drawings.map((drawing) => {
+          const start = snapshot.drawings.get(drawing.id);
+          if (!start) return drawing;
+          return { ...drawing, x: start.x + delta.x, y: start.y + delta.y };
+        }),
+        wires: prev.wires.map((wire) => {
+          const start = snapshot.wires.get(wire.id);
+          if (!start) return wire;
+          return { ...wire, x: start.x + delta.x, y: start.y + delta.y };
+        }),
+      }), false);
+    },
+    onEntityDragEnd: () => {
+      dragSnapshotRef.current = null;
+      dragHistoryCapturedRef.current = false;
+    },
+    onCanvasClick: (modifiers) => {
+      if (modifiers.additive || modifiers.toggle) {
+        return;
+      }
+      clearSelection();
+    },
+    onMarqueeStart: (start) => {
+      isSelectingRef.current = true;
+      selectionStartRef.current = start;
+      setSelectionRect({ x: start.x, y: start.y, width: 0, height: 0, visible: true });
+    },
+    onMarqueeMove: (rect) => {
+      setSelectionRect({ ...rect, visible: true });
+    },
+    onMarqueeEnd: (rect, modifiers) => {
+      const topLeft = screenToWorld({ x: rect.x, y: rect.y }, camera);
+      const bottomRight = screenToWorld(
+        { x: rect.x + rect.width, y: rect.y + rect.height },
+        camera
+      );
+      const worldRect = {
+        minX: Math.min(topLeft.x, bottomRight.x),
+        maxX: Math.max(topLeft.x, bottomRight.x),
+        minY: Math.min(topLeft.y, bottomRight.y),
+        maxY: Math.max(topLeft.y, bottomRight.y),
+      };
+
+      const matchedDrawingIds = drawings
+        .filter((drawing) => intersects(getDrawingBounds(drawing), worldRect))
+        .map((drawing) => drawing.id);
+      const matchedWireIds = wires
+        .filter((wire) => intersects(getWireBounds(wire), worldRect))
+        .map((wire) => wire.id);
+      const matchedComponentIds = components
+        .filter((component) => intersects(getComponentBounds(component), worldRect))
+        .map((component) => component.id);
+
+      const current = {
+        componentIds: selectedComponentIdsRef.current,
+        drawingIds: selectedDrawingIdsRef.current,
+        wireIds: selectedWireIdsRef.current,
+      };
+
+      const union = (a: string[], b: string[]) => Array.from(new Set([...a, ...b]));
+      const toggle = (base: string[], items: string[]) => {
+        const set = new Set(base);
+        items.forEach((id) => {
+          if (set.has(id)) {
+            set.delete(id);
+          } else {
+            set.add(id);
+          }
+        });
+        return Array.from(set);
+      };
+
+      let next = {
+        componentIds: matchedComponentIds,
+        drawingIds: matchedDrawingIds,
+        wireIds: matchedWireIds,
+      };
+
+      if (modifiers.additive) {
+        next = {
+          componentIds: union(current.componentIds, matchedComponentIds),
+          drawingIds: union(current.drawingIds, matchedDrawingIds),
+          wireIds: union(current.wireIds, matchedWireIds),
+        };
+      } else if (modifiers.toggle) {
+        next = {
+          componentIds: toggle(current.componentIds, matchedComponentIds),
+          drawingIds: toggle(current.drawingIds, matchedDrawingIds),
+          wireIds: toggle(current.wireIds, matchedWireIds),
+        };
+      }
+
+      applySelection(next);
+      isSelectingRef.current = false;
+      selectionStartRef.current = null;
+      setSelectionRect((prev) => ({ ...prev, visible: false }));
+    },
   });
 
-  const {
-    handleDrawingMouseDown,
-    handleDrawingDragStart,
-    handleDrawingDragMove,
-    handleDrawingDragEnd,
-  } = useDrawingEventHandlers({
-    selectedTool,
-    isPasteMode,
-    selectedDrawingIds,
-    selectedComponentIds,
-    selectedWireIds,
-    selectedDrawingSet,
-    setSelectedDrawingIds,
-    setSelectedComponentIds,
-    setSelectedWireIds,
-    captureDragHistory,
-    components,
-    drawings,
-    wires,
-    makeDragKey,
-    dragStartPositionsRef,
-    wireDragStartPointsRef,
-    dragAnchorIdRef,
-    dragHistoryCapturedRef,
-    updateScene,
-  });
-
-  const {
-    handleWireMouseDown,
-    handleWireDragStart,
-    handleWireDragMove,
-    handleWireDragEnd,
-  } = useWireEventHandlers({
-    selectedTool,
-    isPasteMode,
-    selectedWireIds,
-    selectedWireSet,
-    selectedComponentIds,
-    selectedDrawingIds,
-    setSelectedWireIds,
-    setSelectedComponentIds,
-    setSelectedDrawingIds,
-    captureDragHistory,
-    components,
-    drawings,
-    wires,
-    makeDragKey,
-    dragStartPositionsRef,
-    wireDragStartPointsRef,
-    dragAnchorIdRef,
-    dragHistoryCapturedRef,
-    updateScene,
-  });
+  const handleEntityMouseDown = useCallback(
+    (kind: 'component' | 'drawing' | 'wire', id: string) => {
+      return (e: KonvaEventObject<MouseEvent>) => {
+        if (selectedTool || isPasteMode) return;
+        e.cancelBubble = true;
+        const stage = e.target.getStage();
+        const pointer = stage?.getPointerPosition();
+        if (!pointer) return;
+        const world = screenToWorld(pointer, camera);
+        const modifiers = { toggle: e.evt.ctrlKey || e.evt.metaKey, additive: e.evt.shiftKey };
+        interactionTriage.handleEntityMouseDown(kind, id, pointer, world, modifiers);
+      };
+    },
+    [camera, interactionTriage, isPasteMode, selectedTool]
+  );
 
   const undo = useCallback(() => {
     const previous = undoStackRef.current.pop();
@@ -815,6 +958,7 @@ export default function CanvasViewport({
 
       const targetClass = e.target.getClassName();
       const clickedOnCanvas = e.target === stage || targetClass === 'Layer';
+      const modifiers = { toggle: e.evt.ctrlKey || e.evt.metaKey, additive: e.evt.shiftKey };
 
       if (selectedTool) {
         const snapped = getSnappedWorld(pointer, camera);
@@ -909,10 +1053,8 @@ export default function CanvasViewport({
         return;
       }
 
-      if (!selectedTool && clickedOnCanvas) {
-        isSelectingRef.current = true;
-        selectionStartRef.current = pointer;
-        setSelectionRect({ x: pointer.x, y: pointer.y, width: 0, height: 0, visible: true });
+      if (!selectedTool && clickedOnCanvas && !isPasteMode) {
+        interactionTriage.handleCanvasMouseDown(pointer, screenToWorld(pointer, camera), modifiers);
       }
     },
     [
@@ -921,6 +1063,7 @@ export default function CanvasViewport({
       camera,
       clipboard,
       clearSelection,
+      interactionTriage,
       isPasteMode,
       placementRotation,
       selectedTool,
@@ -965,18 +1108,11 @@ export default function CanvasViewport({
         }
       }
 
-      if (isSelectingRef.current && selectionStartRef.current) {
-        const start = selectionStartRef.current;
-        setSelectionRect({
-          x: Math.min(start.x, pointer.x),
-          y: Math.min(start.y, pointer.y),
-          width: Math.abs(pointer.x - start.x),
-          height: Math.abs(pointer.y - start.y),
-          visible: true,
-        });
+      if (!selectedTool && !isPasteMode) {
+        interactionTriage.handlePointerMove(pointer, world);
       }
     },
-    [camera, isPanning, isPasteMode, selectedTool]
+    [camera, interactionTriage, isPanning, isPasteMode, selectedTool]
   );
 
   const handleMouseUp = useCallback(
@@ -1005,51 +1141,27 @@ export default function CanvasViewport({
         return;
       }
 
-      if (e.evt.button !== 0 || !isSelectingRef.current || !selectionStartRef.current || selectedTool || isPasteMode) {
+      if (e.evt.button !== 0 || selectedTool || isPasteMode) {
         return;
       }
 
-      const isClick = selectionRect.width <= DRAG_THRESHOLD && selectionRect.height <= DRAG_THRESHOLD;
-      if (isClick) {
-        clearSelection();
-      } else {
-        const topLeft = screenToWorld({ x: selectionRect.x, y: selectionRect.y }, camera);
-        const bottomRight = screenToWorld(
-          { x: selectionRect.x + selectionRect.width, y: selectionRect.y + selectionRect.height },
-          camera
-        );
-        const worldRect = {
-          minX: Math.min(topLeft.x, bottomRight.x),
-          maxX: Math.max(topLeft.x, bottomRight.x),
-          minY: Math.min(topLeft.y, bottomRight.y),
-          maxY: Math.max(topLeft.y, bottomRight.y),
-        };
-
-        const matchedDrawingIds = drawings
-          .filter((drawing) => intersects(getDrawingBounds(drawing), worldRect))
-          .map((drawing) => drawing.id);
-        const matchedWireIds = wires
-          .filter((wire) => intersects(getWireBounds(wire), worldRect))
-          .map((wire) => wire.id);
-        const matchedComponentIds = components
-          .filter((component) => intersects(getComponentBounds(component), worldRect))
-          .map((component) => component.id);
-
-        setSelectedDrawingIds(matchedDrawingIds);
-        setSelectedWireIds(matchedWireIds);
-        setSelectedComponentIds(matchedComponentIds);
+      const stage = e.target.getStage();
+      const pointer = stage?.getPointerPosition();
+      if (pointer) {
+        interactionTriage.handlePointerUp(pointer);
       }
-
-      isSelectingRef.current = false;
-      selectionStartRef.current = null;
-      setSelectionRect((prev) => ({ ...prev, visible: false }));
     },
-    [camera, clearSelection, components, drawings, isPasteMode, onContextMenu, selectedTool, selectionRect, wires]
+    [interactionTriage, isPasteMode, onContextMenu, selectedTool]
   );
 
-  const handleWirePointDragStart = useCallback(() => {
-    captureDragHistory();
-  }, [captureDragHistory]);
+  const handleWirePointDragStart = useCallback(
+    (e: KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true;
+      setIsWirePointDragging(true);
+      captureDragHistory();
+    },
+    [captureDragHistory]
+  );
 
   const handleWirePointDragMove = useCallback(
     (wireId: string, pointIndex: number) => {
@@ -1060,7 +1172,7 @@ export default function CanvasViewport({
           ...prev,
           wires: prev.wires.map((wire) => {
             if (wire.id !== wireId) return wire;
-            return setWireVertexAbsolute(wire, pointIndex, { x, y });
+            return setWireVertexAbsolute(wire, pointIndex, { x: wire.x + x, y: wire.y + y });
           }),
         }), false);
       };
@@ -1078,12 +1190,13 @@ export default function CanvasViewport({
           wires: prev.wires.map((wire) => {
             if (wire.id !== wireId) return wire;
             return setWireVertexAbsolute(wire, pointIndex, {
-              x: snapToGrid(x),
-              y: snapToGrid(y),
+              x: snapToGrid(wire.x + x),
+              y: snapToGrid(wire.y + y),
             });
           }),
         }), false);
         dragHistoryCapturedRef.current = false;
+        setIsWirePointDragging(false);
       };
     },
     [updateScene]
@@ -1249,6 +1362,7 @@ export default function CanvasViewport({
       selectionStartRef.current = null;
       setSelectionRect((prev) => ({ ...prev, visible: false }));
     }
+    interactionTriage.reset();
   }, []);
 
   const handleContextMenuEvent = useCallback((e: KonvaEventObject<PointerEvent>) => {
@@ -1290,11 +1404,7 @@ export default function CanvasViewport({
               y={component.y}
               rotation={component.rotation}
               isSelected={selectedComponentSet.has(component.id)}
-              draggable={selectedComponentSet.has(component.id) && !selectedTool && !isPasteMode}
-              onMouseDown={handleComponentMouseDown(component.id)}
-              onDragStart={handleComponentDragStart(component.id)}
-              onDragMove={handleComponentDragMove(component.id)}
-              onDragEnd={handleComponentDragEnd(component.id)}
+              onMouseDown={handleEntityMouseDown('component', component.id)}
             />
           ))}
 
@@ -1329,40 +1439,40 @@ export default function CanvasViewport({
 
         <Layer x={camera.offsetX} y={camera.offsetY} scaleX={camera.zoom} scaleY={camera.zoom}>
           {wires.map((wire) => {
-            const absolutePoints = getAbsoluteWirePoints(wire);
-            const points = absolutePoints.flatMap((point) => [point.x, point.y]);
+            const relativePoints = wire.vertices.flatMap((point) => [point.x, point.y]);
             const isSelected = selectedWireSet.has(wire.id);
             return (
               <React.Fragment key={wire.id}>
-                <Line
-                  points={points}
-                  stroke="black"
-                  strokeWidth={1}
-                  lineJoin="round"
-                  lineCap="round"
-                  hitStrokeWidth={6}
-                  onMouseDown={handleWireMouseDown(wire.id)}
-                  draggable={isSelected && !selectedTool && !isPasteMode}
-                  onDragStart={handleWireDragStart(wire.id)}
-                  onDragMove={handleWireDragMove(wire.id)}
-                  onDragEnd={handleWireDragEnd(wire.id)}
-                />
-                {isSelected && !selectedTool && !isPasteMode &&
-                  absolutePoints.map((point, index) => (
-                    <Circle
-                      key={`${wire.id}-point-${index}`}
-                      x={point.x}
-                      y={point.y}
-                      radius={4}
-                      fill="#ffffff"
-                      stroke="#4f80ff"
-                      strokeWidth={1}
-                      draggable={true}
-                      onDragStart={handleWirePointDragStart}
-                      onDragMove={handleWirePointDragMove(wire.id, index)}
-                      onDragEnd={handleWirePointDragEnd(wire.id, index)}
-                    />
-                  ))}
+                <Group
+                  x={wire.x}
+                  y={wire.y}
+                  onMouseDown={handleEntityMouseDown('wire', wire.id)}
+                >
+                  <Line
+                    points={relativePoints}
+                    stroke="black"
+                    strokeWidth={1}
+                    lineJoin="round"
+                    lineCap="round"
+                    hitStrokeWidth={6}
+                  />
+                  {isSelected && !selectedTool && !isPasteMode &&
+                    wire.vertices.map((point, index) => (
+                      <Circle
+                        key={`${wire.id}-point-${index}`}
+                        x={point.x}
+                        y={point.y}
+                        radius={4}
+                        fill="#ffffff"
+                        stroke="#4f80ff"
+                        strokeWidth={1}
+                        draggable={true}
+                    onDragStart={handleWirePointDragStart}
+                        onDragMove={handleWirePointDragMove(wire.id, index)}
+                        onDragEnd={handleWirePointDragEnd(wire.id, index)}
+                      />
+                    ))}
+                </Group>
               </React.Fragment>
             );
           })}
@@ -1372,11 +1482,7 @@ export default function CanvasViewport({
               key={drawing.id}
               drawing={drawing}
               isSelected={selectedDrawingSet.has(drawing.id)}
-              draggable={selectedDrawingSet.has(drawing.id) && !selectedTool && !isPasteMode}
-              onMouseDown={handleDrawingMouseDown(drawing.id)}
-              onDragStart={handleDrawingDragStart(drawing.id)}
-              onDragMove={handleDrawingDragMove(drawing.id)}
-              onDragEnd={handleDrawingDragEnd(drawing.id)}
+              onMouseDown={handleEntityMouseDown('drawing', drawing.id)}
             />
           ))}
 

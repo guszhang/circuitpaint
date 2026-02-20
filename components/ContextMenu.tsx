@@ -26,6 +26,7 @@ export default function ContextMenu({ x, y, onClose }: ContextMenuProps) {
     };
 
     const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
       // Close on right-click elsewhere
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
