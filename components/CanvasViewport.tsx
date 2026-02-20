@@ -10,9 +10,21 @@ import {
   isComponentTool,
   isDrawingTool,
   type ComponentToolId,
-  type DrawingToolId,
   type ToolId,
 } from '../lib/tools';
+import { DOT_RADIUS, GRID_SPACING, snapToGrid } from './canvas/grid';
+import {
+  type ClipboardData,
+  type ComponentEntity,
+  type DrawingEntity,
+  type NonWireDrawingToolId,
+  type Rotation,
+  type SceneData,
+  type WireEntity,
+} from './canvas/types';
+import { useComponentEventHandlers } from './canvas/useComponentEventHandlers';
+import { useDrawingEventHandlers } from './canvas/useDrawingEventHandlers';
+import { useWireEventHandlers } from './canvas/useWireEventHandlers';
 import styles from './CanvasViewport.module.css';
 import ResistorSymbol, { type ResistorRotation } from './ResistorSymbol';
 
@@ -35,50 +47,7 @@ export interface CanvasViewportControls {
   deleteSelection: () => void;
 }
 
-type Rotation = 0 | 90 | 180 | 270;
-
-type NonWireDrawingToolId = Exclude<DrawingToolId, 'wire'>;
-
-interface ComponentEntity {
-  id: string;
-  toolId: ComponentToolId;
-  x: number;
-  y: number;
-  rotation: Rotation;
-}
-
-interface DrawingEntity {
-  id: string;
-  toolId: NonWireDrawingToolId;
-  x: number;
-  y: number;
-  rotation: Rotation;
-}
-
-interface WireEntity {
-  id: string;
-  x: number;
-  y: number;
-  vertices: Point[];
-}
-
-interface SceneData {
-  components: ComponentEntity[];
-  drawings: DrawingEntity[];
-  wires: WireEntity[];
-}
-
-interface ClipboardData {
-  components: Omit<ComponentEntity, 'id'>[];
-  drawings: Omit<DrawingEntity, 'id'>[];
-  wires: Array<{ points: Point[] }>;
-}
-
-const GRID_SPACING = 20;
-const DOT_RADIUS = 1.5;
 const DRAG_THRESHOLD = 5;
-
-const snapToGrid = (value: number) => Math.round(value / GRID_SPACING) * GRID_SPACING;
 const rotateBy90 = (rotation: Rotation) => ((rotation + 90) % 360) as Rotation;
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -499,6 +468,87 @@ export default function CanvasViewport({
     redoStackRef.current = [];
     dragHistoryCapturedRef.current = true;
   }, []);
+
+  const {
+    handleComponentMouseDown,
+    handleComponentDragStart,
+    handleComponentDragMove,
+    handleComponentDragEnd,
+  } = useComponentEventHandlers({
+    selectedTool,
+    isPasteMode,
+    selectedComponentSet,
+    selectedComponentIds,
+    selectedDrawingIds,
+    selectedWireIds,
+    setSelectedComponentIds,
+    setSelectedDrawingIds,
+    setSelectedWireIds,
+    captureDragHistory,
+    components,
+    drawings,
+    wires,
+    makeDragKey,
+    dragStartPositionsRef,
+    wireDragStartPointsRef,
+    dragAnchorIdRef,
+    dragHistoryCapturedRef,
+    updateScene,
+  });
+
+  const {
+    handleDrawingMouseDown,
+    handleDrawingDragStart,
+    handleDrawingDragMove,
+    handleDrawingDragEnd,
+  } = useDrawingEventHandlers({
+    selectedTool,
+    isPasteMode,
+    selectedDrawingIds,
+    selectedComponentIds,
+    selectedWireIds,
+    selectedDrawingSet,
+    setSelectedDrawingIds,
+    setSelectedComponentIds,
+    setSelectedWireIds,
+    captureDragHistory,
+    components,
+    drawings,
+    wires,
+    makeDragKey,
+    dragStartPositionsRef,
+    wireDragStartPointsRef,
+    dragAnchorIdRef,
+    dragHistoryCapturedRef,
+    updateScene,
+  });
+
+  const {
+    handleWireMouseDown,
+    handleWireDragStart,
+    handleWireDragMove,
+    handleWireDragEnd,
+  } = useWireEventHandlers({
+    selectedTool,
+    isPasteMode,
+    selectedWireIds,
+    selectedWireSet,
+    selectedComponentIds,
+    selectedDrawingIds,
+    setSelectedWireIds,
+    setSelectedComponentIds,
+    setSelectedDrawingIds,
+    captureDragHistory,
+    components,
+    drawings,
+    wires,
+    makeDragKey,
+    dragStartPositionsRef,
+    wireDragStartPointsRef,
+    dragAnchorIdRef,
+    dragHistoryCapturedRef,
+    updateScene,
+  });
 
   const undo = useCallback(() => {
     const previous = undoStackRef.current.pop();
@@ -997,230 +1047,6 @@ export default function CanvasViewport({
     [camera, clearSelection, components, drawings, isPasteMode, onContextMenu, selectedTool, selectionRect, wires]
   );
 
-  const handleComponentMouseDown = useCallback(
-    (componentId: string) => {
-      return (e: KonvaEventObject<MouseEvent>) => {
-        if (selectedTool || isPasteMode) return;
-        e.cancelBubble = true;
-        if (selectedComponentSet.has(componentId)) {
-          return;
-        }
-        setSelectedComponentIds([componentId]);
-        setSelectedDrawingIds([]);
-        setSelectedWireIds([]);
-      };
-    },
-    [isPasteMode, selectedComponentSet, selectedTool]
-  );
-
-  const handleDrawingMouseDown = useCallback(
-    (drawingId: string) => {
-      return (e: KonvaEventObject<MouseEvent>) => {
-        if (selectedTool || isPasteMode) return;
-        e.cancelBubble = true;
-        setSelectedDrawingIds([drawingId]);
-        setSelectedComponentIds([]);
-        setSelectedWireIds([]);
-      };
-    },
-    [isPasteMode, selectedTool]
-  );
-
-  const handleWireMouseDown = useCallback(
-    (wireId: string) => {
-      return (e: KonvaEventObject<MouseEvent>) => {
-        if (selectedTool || isPasteMode) return;
-        e.cancelBubble = true;
-        setSelectedWireIds([wireId]);
-        setSelectedDrawingIds([]);
-        setSelectedComponentIds([]);
-      };
-    },
-    [isPasteMode, selectedTool]
-  );
-
-  const handleDragStart = useCallback(
-    (kind: 'component' | 'drawing', id: string) => {
-      return (e: KonvaEventObject<DragEvent>) => {
-        e.cancelBubble = true;
-
-        if (selectedTool || isPasteMode) return;
-
-        captureDragHistory();
-
-        let nextComponentIds = selectedComponentIds;
-        let nextDrawingIds = selectedDrawingIds;
-        let nextWireIds = selectedWireIds;
-
-        if (kind === 'component') {
-          if (!selectedComponentSet.has(id)) {
-            nextComponentIds = [id];
-            nextDrawingIds = [];
-            nextWireIds = [];
-            setSelectedComponentIds(nextComponentIds);
-            setSelectedDrawingIds([]);
-            setSelectedWireIds([]);
-          }
-        } else if (!selectedDrawingSet.has(id)) {
-          nextDrawingIds = [id];
-          nextComponentIds = [];
-          nextWireIds = [];
-          setSelectedDrawingIds(nextDrawingIds);
-          setSelectedComponentIds([]);
-          setSelectedWireIds([]);
-        }
-
-        const snapshot = new Map<string, Point>();
-        components.forEach((component) => {
-          if (nextComponentIds.includes(component.id)) {
-            snapshot.set(makeDragKey('component', component.id), { x: component.x, y: component.y });
-          }
-        });
-        drawings.forEach((drawing) => {
-          if (nextDrawingIds.includes(drawing.id)) {
-            snapshot.set(makeDragKey('drawing', drawing.id), { x: drawing.x, y: drawing.y });
-          }
-        });
-        const wireSnapshot = new Map<string, Point>();
-        wires.forEach((wire) => {
-          if (nextWireIds.includes(wire.id)) {
-            snapshot.set(makeDragKey('wire', wire.id), { x: wire.x, y: wire.y });
-            wireSnapshot.set(wire.id, { x: wire.x, y: wire.y });
-          }
-        });
-
-        dragStartPositionsRef.current = snapshot;
-        wireDragStartPointsRef.current = wireSnapshot;
-        dragAnchorIdRef.current = makeDragKey(kind, id);
-      };
-    },
-    [
-      components,
-      captureDragHistory,
-      drawings,
-      makeDragKey,
-      selectedComponentIds,
-      selectedComponentSet,
-      selectedDrawingIds,
-      selectedDrawingSet,
-      selectedWireIds,
-      isPasteMode,
-      selectedTool,
-      wires,
-    ]
-  );
-
-  const handleDragMove = useCallback(
-    (kind: 'component' | 'drawing', id: string) => {
-      return (e: KonvaEventObject<DragEvent>) => {
-        e.cancelBubble = true;
-        const snapshot = dragStartPositionsRef.current;
-        if (!snapshot) return;
-
-        const anchorKey = dragAnchorIdRef.current ?? makeDragKey(kind, id);
-        const anchorStart = snapshot.get(anchorKey);
-        if (!anchorStart) return;
-
-        const { x, y } = e.target.position();
-        const delta = { x: x - anchorStart.x, y: y - anchorStart.y };
-
-        updateScene((prev) => ({
-          ...prev,
-          components: prev.components.map((component) => {
-            const start = snapshot.get(makeDragKey('component', component.id));
-            if (!start) return component;
-            return { ...component, x: start.x + delta.x, y: start.y + delta.y };
-          }),
-          drawings: prev.drawings.map((drawing) => {
-            const start = snapshot.get(makeDragKey('drawing', drawing.id));
-            if (!start) return drawing;
-            return { ...drawing, x: start.x + delta.x, y: start.y + delta.y };
-          }),
-          wires: (() => {
-            const wireSnapshot = wireDragStartPointsRef.current;
-            if (!wireSnapshot) {
-              return prev.wires;
-            }
-            return prev.wires.map((wire) => {
-              const start = wireSnapshot.get(wire.id);
-              if (!start) return wire;
-              return {
-                ...wire,
-                x: start.x + delta.x,
-                y: start.y + delta.y,
-              };
-            });
-          })(),
-        }), false);
-      };
-    },
-    [makeDragKey, updateScene]
-  );
-
-  const handleDragEnd = useCallback(
-    (kind: 'component' | 'drawing', id: string) => {
-      return (e: KonvaEventObject<DragEvent>) => {
-        e.cancelBubble = true;
-        const snapshot = dragStartPositionsRef.current;
-        if (!snapshot) return;
-
-        const anchorKey = dragAnchorIdRef.current ?? makeDragKey(kind, id);
-        const anchorStart = snapshot.get(anchorKey);
-        if (!anchorStart) return;
-
-        const { x, y } = e.target.position();
-        const delta = { x: x - anchorStart.x, y: y - anchorStart.y };
-        const snappedDelta = {
-          x: snapToGrid(anchorStart.x + delta.x) - anchorStart.x,
-          y: snapToGrid(anchorStart.y + delta.y) - anchorStart.y,
-        };
-
-        updateScene((prev) => ({
-          ...prev,
-          components: prev.components.map((component) => {
-            const start = snapshot.get(makeDragKey('component', component.id));
-            if (!start) return component;
-            return {
-              ...component,
-              x: snapToGrid(start.x + snappedDelta.x),
-              y: snapToGrid(start.y + snappedDelta.y),
-            };
-          }),
-          drawings: prev.drawings.map((drawing) => {
-            const start = snapshot.get(makeDragKey('drawing', drawing.id));
-            if (!start) return drawing;
-            return {
-              ...drawing,
-              x: snapToGrid(start.x + snappedDelta.x),
-              y: snapToGrid(start.y + snappedDelta.y),
-            };
-          }),
-          wires: (() => {
-            const wireSnapshot = wireDragStartPointsRef.current;
-            if (!wireSnapshot) {
-              return prev.wires;
-            }
-            return prev.wires.map((wire) => {
-              const start = wireSnapshot.get(wire.id);
-              if (!start) return wire;
-              return {
-                ...wire,
-                x: snapToGrid(start.x + snappedDelta.x),
-                y: snapToGrid(start.y + snappedDelta.y),
-              };
-            });
-          })(),
-        }), false);
-
-        dragStartPositionsRef.current = null;
-        wireDragStartPointsRef.current = null;
-        dragAnchorIdRef.current = null;
-        dragHistoryCapturedRef.current = false;
-      };
-    },
-    [makeDragKey, updateScene]
-  );
-
   const handleWirePointDragStart = useCallback(() => {
     captureDragHistory();
   }, [captureDragHistory]);
@@ -1466,9 +1292,9 @@ export default function CanvasViewport({
               isSelected={selectedComponentSet.has(component.id)}
               draggable={selectedComponentSet.has(component.id) && !selectedTool && !isPasteMode}
               onMouseDown={handleComponentMouseDown(component.id)}
-              onDragStart={handleDragStart('component', component.id)}
-              onDragMove={handleDragMove('component', component.id)}
-              onDragEnd={handleDragEnd('component', component.id)}
+              onDragStart={handleComponentDragStart(component.id)}
+              onDragMove={handleComponentDragMove(component.id)}
+              onDragEnd={handleComponentDragEnd(component.id)}
             />
           ))}
 
@@ -1516,6 +1342,10 @@ export default function CanvasViewport({
                   lineCap="round"
                   hitStrokeWidth={6}
                   onMouseDown={handleWireMouseDown(wire.id)}
+                  draggable={isSelected && !selectedTool && !isPasteMode}
+                  onDragStart={handleWireDragStart(wire.id)}
+                  onDragMove={handleWireDragMove(wire.id)}
+                  onDragEnd={handleWireDragEnd(wire.id)}
                 />
                 {isSelected && !selectedTool && !isPasteMode &&
                   absolutePoints.map((point, index) => (
@@ -1544,9 +1374,9 @@ export default function CanvasViewport({
               isSelected={selectedDrawingSet.has(drawing.id)}
               draggable={selectedDrawingSet.has(drawing.id) && !selectedTool && !isPasteMode}
               onMouseDown={handleDrawingMouseDown(drawing.id)}
-              onDragStart={handleDragStart('drawing', drawing.id)}
-              onDragMove={handleDragMove('drawing', drawing.id)}
-              onDragEnd={handleDragEnd('drawing', drawing.id)}
+              onDragStart={handleDrawingDragStart(drawing.id)}
+              onDragMove={handleDrawingDragMove(drawing.id)}
+              onDragEnd={handleDrawingDragEnd(drawing.id)}
             />
           ))}
 

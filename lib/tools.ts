@@ -1,27 +1,31 @@
-export const COMPONENT_TOOL_IDS = [
-  'resistor',
-  'capacitor',
-  'inductor',
-  'diode',
-  'transistor',
-  'ic',
-  'ground',
-  'power',
-] as const;
+const TOOL_GROUP_CONFIG = {
+  component: [
+    { id: 'resistor', label: 'Resistor' },
+    { id: 'capacitor', label: 'Capacitor' },
+    { id: 'inductor', label: 'Inductor' },
+    { id: 'diode', label: 'Diode' },
+    { id: 'transistor', label: 'Transistor' },
+    { id: 'ic', label: 'IC' },
+    { id: 'ground', label: 'Ground' },
+    { id: 'power', label: 'Power' },
+  ],
+  drawing: [
+    { id: 'joint', label: 'Joint' },
+    { id: 'wire', label: 'Wire' },
+    { id: 'bus', label: 'Bus' },
+    { id: 'label', label: 'Label' },
+    { id: 'text', label: 'Text' },
+    { id: 'note', label: 'Note' },
+  ],
+} as const;
 
-export const DRAWING_TOOL_IDS = [
-  'joint',
-  'wire',
-  'bus',
-  'label',
-  'text',
-  'note',
-] as const;
+export type ToolGroup = keyof typeof TOOL_GROUP_CONFIG;
 
-export type ComponentToolId = (typeof COMPONENT_TOOL_IDS)[number];
-export type DrawingToolId = (typeof DRAWING_TOOL_IDS)[number];
+type ToolGroupEntry<G extends ToolGroup> = (typeof TOOL_GROUP_CONFIG)[G][number];
+
+export type ComponentToolId = ToolGroupEntry<'component'>['id'];
+export type DrawingToolId = ToolGroupEntry<'drawing'>['id'];
 export type ToolId = ComponentToolId | DrawingToolId;
-export type ToolGroup = 'component' | 'drawing';
 
 export interface ToolDefinition {
   id: ToolId;
@@ -29,22 +33,22 @@ export interface ToolDefinition {
   group: ToolGroup;
 }
 
-export const TOOL_DEFINITIONS: ToolDefinition[] = [
-  { id: 'resistor', label: 'Resistor', group: 'component' },
-  { id: 'capacitor', label: 'Capacitor', group: 'component' },
-  { id: 'inductor', label: 'Inductor', group: 'component' },
-  { id: 'diode', label: 'Diode', group: 'component' },
-  { id: 'transistor', label: 'Transistor', group: 'component' },
-  { id: 'ic', label: 'IC', group: 'component' },
-  { id: 'ground', label: 'Ground', group: 'component' },
-  { id: 'power', label: 'Power', group: 'component' },
-  { id: 'joint', label: 'Joint', group: 'drawing' },
-  { id: 'wire', label: 'Wire', group: 'drawing' },
-  { id: 'bus', label: 'Bus', group: 'drawing' },
-  { id: 'label', label: 'Label', group: 'drawing' },
-  { id: 'text', label: 'Text', group: 'drawing' },
-  { id: 'note', label: 'Note', group: 'drawing' },
-];
+const TOOLS_BY_GROUP = Object.fromEntries(
+  (Object.entries(TOOL_GROUP_CONFIG) as Array<[ToolGroup, readonly ToolGroupEntry<ToolGroup>[]]>).map(
+    ([group, tools]) => [
+      group,
+      tools.map((tool) => ({
+        ...tool,
+        group,
+      })),
+    ]
+  )
+) as Record<ToolGroup, ToolDefinition[]>;
+
+export const TOOL_DEFINITIONS: ToolDefinition[] = Object.values(TOOLS_BY_GROUP).flat();
+
+export const COMPONENT_TOOL_IDS = TOOL_GROUP_CONFIG.component.map((tool) => tool.id) as ComponentToolId[];
+export const DRAWING_TOOL_IDS = TOOL_GROUP_CONFIG.drawing.map((tool) => tool.id) as DrawingToolId[];
 
 const COMPONENT_TOOL_SET = new Set<ComponentToolId>(COMPONENT_TOOL_IDS);
 const DRAWING_TOOL_SET = new Set<DrawingToolId>(DRAWING_TOOL_IDS);
@@ -58,5 +62,5 @@ export function isDrawingTool(tool: string): tool is DrawingToolId {
 }
 
 export function getToolsByGroup(group: ToolGroup): ToolDefinition[] {
-  return TOOL_DEFINITIONS.filter((tool) => tool.group === group);
+  return TOOLS_BY_GROUP[group];
 }

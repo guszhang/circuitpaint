@@ -3,8 +3,8 @@
 import React, { useState, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import MenuBar from '../components/MenuBar';
-import LeftToolbar from '../components/LeftToolbar';
-import RightToolbar from '../components/RightToolbar';
+import LeftToolbar from '../components/tools/LeftToolbar';
+import RightToolbar from '../components/tools/RightToolbar';
 import ContextMenu from '../components/ContextMenu';
 import styles from './page.module.css';
 import type { CanvasViewportControls } from '../components/CanvasViewport';
