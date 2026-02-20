@@ -4,10 +4,10 @@ const TOOL_GROUP_CONFIG = {
     { id: 'capacitor', label: 'Capacitor' },
     { id: 'inductor', label: 'Inductor' },
     { id: 'diode', label: 'Diode' },
-    { id: 'transistor', label: 'Transistor' },
+    { id: 'switch', label: 'Switch' },
     { id: 'ic', label: 'IC' },
     { id: 'ground', label: 'Ground' },
-    { id: 'power', label: 'Power' },
+    { id: 'source', label: 'Source' },
   ],
   drawing: [
     { id: 'joint', label: 'Joint' },
@@ -44,10 +44,10 @@ const TOOLS_BY_GROUP = Object.fromEntries(
   )
 ) as Record<ToolGroup, ToolDefinition[]>;
 
-export const TOOL_DEFINITIONS: ToolDefinition[] = Object.values(TOOLS_BY_GROUP).flat();
+const TOOL_DEFINITIONS: ToolDefinition[] = Object.values(TOOLS_BY_GROUP).flat();
 
-export const COMPONENT_TOOL_IDS = TOOL_GROUP_CONFIG.component.map((tool) => tool.id) as ComponentToolId[];
-export const DRAWING_TOOL_IDS = TOOL_GROUP_CONFIG.drawing.map((tool) => tool.id) as DrawingToolId[];
+const COMPONENT_TOOL_IDS = TOOL_GROUP_CONFIG.component.map((tool) => tool.id) as ComponentToolId[];
+const DRAWING_TOOL_IDS = TOOL_GROUP_CONFIG.drawing.map((tool) => tool.id) as DrawingToolId[];
 
 const COMPONENT_TOOL_SET = new Set<ComponentToolId>(COMPONENT_TOOL_IDS);
 const DRAWING_TOOL_SET = new Set<DrawingToolId>(DRAWING_TOOL_IDS);

@@ -4,7 +4,7 @@ import React from 'react';
 import { Group, Line, Rect } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
-export type SymbolRotation = 0 | 90 | 180 | 270;
+type SymbolRotation = 0 | 90 | 180 | 270;
 
 interface JointSymbolProps {
   x: number;

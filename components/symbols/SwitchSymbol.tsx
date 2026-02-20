@@ -4,9 +4,9 @@ import React from 'react';
 import { Group, Line, Rect, Arrow } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
-export type SymbolRotation = 0 | 90 | 180 | 270;
+type SymbolRotation = 0 | 90 | 180 | 270;
 
-interface TransistorSymbolProps {
+interface SwitchSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
@@ -22,7 +22,7 @@ interface TransistorSymbolProps {
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }
 
-export default function TransistorSymbol({
+export default function SwitchSymbol({
   x,
   y,
   rotation,
@@ -36,14 +36,15 @@ export default function TransistorSymbol({
   onDragStart,
   onDragMove,
   onDragEnd,
-}: TransistorSymbolProps) {
+}: SwitchSymbolProps) {
   const lineColor = strokeColor ?? 'black';
+  const renderRotation = ((rotation + 90) % 360) as SymbolRotation;
 
   return (
     <Group
       x={x}
       y={y}
-      rotation={rotation}
+      rotation={renderRotation}
       draggable={draggable}
       listening={listening}
       opacity={opacity}

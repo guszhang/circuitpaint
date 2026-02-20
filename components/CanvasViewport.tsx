@@ -28,10 +28,10 @@ import ResistorSymbol, { type ResistorRotation } from './symbols/ResistorSymbol'
 import CapacitorSymbol from './symbols/CapacitorSymbol';
 import InductorSymbol from './symbols/InductorSymbol';
 import DiodeSymbol from './symbols/DiodeSymbol';
-import TransistorSymbol from './symbols/TransistorSymbol';
+import SwitchSymbol from './symbols/SwitchSymbol';
 import IcSymbol from './symbols/IcSymbol';
 import GroundSymbol from './symbols/GroundSymbol';
-import PowerSymbol from './symbols/PowerSymbol';
+import SourceSymbol from './symbols/SourceSymbol';
 
 interface CanvasViewportProps {
   onContextMenu: (x: number, y: number) => void;
@@ -206,13 +206,13 @@ function ComponentGlyph({
           ? InductorSymbol
           : toolId === 'diode'
             ? DiodeSymbol
-            : toolId === 'transistor'
-              ? TransistorSymbol
+            : toolId === 'switch'
+              ? SwitchSymbol
               : toolId === 'ic'
                 ? IcSymbol
                 : toolId === 'ground'
                   ? GroundSymbol
-                  : PowerSymbol;
+                  : SourceSymbol;
 
   return (
     <SymbolComponent

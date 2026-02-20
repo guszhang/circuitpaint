@@ -4,9 +4,9 @@ import React from 'react';
 import { Group, Line, Rect, Circle } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
-export type SymbolRotation = 0 | 90 | 180 | 270;
+type SymbolRotation = 0 | 90 | 180 | 270;
 
-interface PowerSymbolProps {
+interface SourceSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
@@ -22,7 +22,7 @@ interface PowerSymbolProps {
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }
 
-export default function PowerSymbol({
+export default function SourceSymbol({
   x,
   y,
   rotation,
@@ -36,14 +36,15 @@ export default function PowerSymbol({
   onDragStart,
   onDragMove,
   onDragEnd,
-}: PowerSymbolProps) {
+}: SourceSymbolProps) {
   const lineColor = strokeColor ?? 'black';
+  const renderRotation = ((rotation + 90) % 360) as SymbolRotation;
 
   return (
     <Group
       x={x}
       y={y}
-      rotation={rotation}
+      rotation={renderRotation}
       draggable={draggable}
       listening={listening}
       opacity={opacity}

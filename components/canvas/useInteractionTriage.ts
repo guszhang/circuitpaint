@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import type { Point } from '../../lib/geometry';
 
-export type EntityKind = 'component' | 'drawing' | 'wire';
+type EntityKind = 'component' | 'drawing' | 'wire';
 
 type Modifiers = {
   toggle: boolean;

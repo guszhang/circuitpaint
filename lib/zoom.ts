@@ -1,5 +1,5 @@
 // Discrete zoom levels for the canvas
-export const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 8];
+const ZOOM_LEVELS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 8];
 
 export function getNextZoomLevel(currentZoom: number, zoomIn: boolean): number {
   if (zoomIn) {

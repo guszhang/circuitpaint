@@ -6,7 +6,7 @@ A fast circuit drawing software with SVG export functions built with Next.js and
 
 ### User Interface
 - **Top Menu Bar**: File, Edit, Draw, Tool, and Help menus with dropdown options
-- **Left Toolbar**: Component library (Resistor, Capacitor, Inductor, Diode, Transistor, IC, Ground, Power)
+- **Left Toolbar**: Component library (Resistor, Capacitor, Inductor, Diode, Switch, IC, Ground, Source)
 - **Right Toolbar**: Wiring and annotation tools (Wire, Bus, Label, Text, Note)
 - **Canvas**: Interactive Konva.js drawing surface with blue dot-matrix grid
 
