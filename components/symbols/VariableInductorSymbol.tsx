@@ -67,19 +67,19 @@ export default function VariableInductorSymbol({
           listening={false}
         />
       )}
-      <Arc x={-12} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} />
-      <Arc x={-4} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} />
-      <Arc x={4} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} />
-      <Arc x={12} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} />
+      <Arc x={-12} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={-4} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={4} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={12} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} lineCap='round'/>
       <Line points={[-20, 0, -16, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
       <Line points={[16, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
       <Arrow
-        points={[10, -10, -2, 8]}
+        points={[8, 6, -8, -10]}
         stroke={lineColor}
         fill={lineColor}
-        strokeWidth={1.5}
-        pointerLength={5}
-        pointerWidth={5}
+        strokeWidth={1}
+        pointerLength={3}
+        pointerWidth={3}
         lineCap="round"
         lineJoin="round"
       />

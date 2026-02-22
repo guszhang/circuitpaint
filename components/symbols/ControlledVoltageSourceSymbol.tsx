@@ -68,12 +68,12 @@ export default function ControlledVoltageSourceSymbol({
           listening={false}
         />
       )}
-      <Line points={[0, -12, 10, 0, 0, 12, -10, 0, 0, -12]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[-6, 0, -2, 0]} stroke={lineColor} strokeWidth={1.5} lineCap="round" lineJoin="round" />
-      <Line points={[-4, -2, -4, 2]} stroke={lineColor} strokeWidth={1.5} lineCap="round" lineJoin="round" />
-      <Line points={[2, -2, 2, 2]} stroke={lineColor} strokeWidth={1.5} lineCap="round" lineJoin="round" />
-      <Line points={[-20, 0, -10, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[10, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[0, -12, 12, 0, 0, 12, -12, 0, 0, -12]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
+      <Line points={[-8, 0, -2, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-5, -3, -5, 3]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[5, -3, 5, 3]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-20, 0, -12, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
     </Group>
   );
 }

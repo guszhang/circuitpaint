@@ -81,12 +81,12 @@ export default function VariableCapacitorSymbol({
       <Line points={[-20, 0, -2, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
       <Line points={[2, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
       <Arrow
-        points={[10, -10, -3, 8]}
+        points={[6, 6, -6, -6]}
         stroke={lineColor}
         fill={lineColor}
-        strokeWidth={1.5}
-        pointerLength={5}
-        pointerWidth={5}
+        strokeWidth={1}
+        pointerLength={3}
+        pointerWidth={3}
         lineCap="round"
         lineJoin="round"
       />

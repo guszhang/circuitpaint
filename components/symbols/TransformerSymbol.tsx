@@ -38,12 +38,13 @@ export default function TransformerSymbol({
   onDragEnd,
 }: TransformerSymbolProps) {
   const lineColor = strokeColor ?? 'black';
+  const renderRotation = ((rotation + 90) % 360) as SymbolRotation;
 
   return (
     <Group
       x={x}
       y={y}
-      rotation={rotation}
+      rotation={renderRotation}
       draggable={draggable}
       listening={listening}
       opacity={opacity}
@@ -67,14 +68,20 @@ export default function TransformerSymbol({
           listening={false}
         />
       )}
-      <Arc x={-12} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} />
-      <Arc x={-4} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} />
-      <Arc x={4} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} />
-      <Arc x={12} y={0} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} />
-      <Line points={[-20, 0, -16, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[16, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[-1, -7, -1, 7]} stroke={lineColor} strokeWidth={1.6} lineCap="round" lineJoin="round" />
-      <Line points={[1, -7, 1, 7]} stroke={lineColor} strokeWidth={1.6} lineCap="round" lineJoin="round" />
+      <Arc x={-12} y={20} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={-4} y={20} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={4} y={20} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={12} y={20} innerRadius={4} outerRadius={4} angle={180} rotation={180} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={-12} y={-20} innerRadius={4} outerRadius={4} angle={180} rotation={0} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={-4} y={-20} innerRadius={4} outerRadius={4} angle={180} rotation={0} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={4} y={-20} innerRadius={4} outerRadius={4} angle={180} rotation={0} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Arc x={12} y={-20} innerRadius={4} outerRadius={4} angle={180} rotation={0} stroke={lineColor} strokeWidth={2} lineCap='round'/>
+      <Line points={[-20, 20, -16, 20]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[16, 20, 20, 20]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-20, -20, -16, -20]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[16, -20, 20, -20]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-16, -2, 16, -2]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
+      <Line points={[-16, 2, 16, 2]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
     </Group>
   );
 }

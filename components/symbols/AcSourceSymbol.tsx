@@ -72,13 +72,13 @@ export default function AcSourceSymbol({
       <Shape
         sceneFunc={(ctx, shape) => {
           ctx.beginPath();
-          ctx.moveTo(-6, 0);
-          ctx.bezierCurveTo(-4, -4, -2, -4, 0, 0);
-          ctx.bezierCurveTo(2, 4, 4, 4, 6, 0);
+          ctx.moveTo(0, -8);
+          ctx.bezierCurveTo(4, -6, 4, -2, 0, 0);
+          ctx.bezierCurveTo(-4, 2, -4, 6, 0, 8);
           ctx.strokeShape(shape);
         }}
         stroke={lineColor}
-        strokeWidth={1.5}
+        strokeWidth={1}
         lineCap="round"
         lineJoin="round"
       />

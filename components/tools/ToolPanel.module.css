@@ -83,7 +83,7 @@
 
 .submenu {
   position: fixed;
-  width: 172px;
+  width: 240px;
   display: flex;
   flex-direction: column;
   gap: 4px;

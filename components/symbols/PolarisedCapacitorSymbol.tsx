@@ -81,7 +81,7 @@ export default function PolarisedCapacitorSymbol({
         sceneFunc={(ctx, shape) => {
           ctx.beginPath();
           ctx.moveTo(2, -6);
-          ctx.quadraticCurveTo(5, 0, 2, 6);
+          ctx.quadraticCurveTo(-1, 0, 2, 6);
           ctx.strokeShape(shape);
         }}
         stroke={lineColor}
@@ -90,9 +90,9 @@ export default function PolarisedCapacitorSymbol({
         lineJoin="round"
       />
       <Line points={[-20, 0, -2, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[2, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[-13, -5, -13, -1]} stroke={lineColor} strokeWidth={1.5} lineCap="round" lineJoin="round" />
-      <Line points={[-15, -3, -11, -3]} stroke={lineColor} strokeWidth={1.5} lineCap="round" lineJoin="round" />
+      <Line points={[0, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-8, -6, -8, -2]} stroke={lineColor} strokeWidth={1.5} lineCap="round" lineJoin="round" />
+      <Line points={[-10, -4, -6, -4]} stroke={lineColor} strokeWidth={1.5} lineCap="round" lineJoin="round" />
     </Group>
   );
 }

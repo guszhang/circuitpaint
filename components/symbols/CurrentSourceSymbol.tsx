@@ -70,10 +70,10 @@ export default function CurrentSourceSymbol({
       )}
       <Circle x={0} y={0} radius={12} stroke={lineColor} strokeWidth={2} listening={false} />
       <Arrow
-        points={[0, 6, 0, -6]}
+        points={[8, 0, -8, 0]}
         stroke={lineColor}
         fill={lineColor}
-        strokeWidth={1.5}
+        strokeWidth={1}
         pointerLength={4}
         pointerWidth={4}
         lineCap="round"

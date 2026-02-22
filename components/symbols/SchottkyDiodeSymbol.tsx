@@ -67,10 +67,8 @@ export default function SchottkyDiodeSymbol({
           listening={false}
         />
       )}
-      <Line points={[5, 0, -5, -6, -5, 6, 5, 0]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[5, -6, 5, 6]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[7, -4, 5, -4]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[7, 4, 5, 4]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
+<Line points={[5, 0, -5, -6, -5, 6, 5, 0]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
+      <Line points={[7, -5, 7, -7, 5, -7, 5, 7, 3, 7, 3, 5]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
       <Line points={[-20, 0, -5, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
       <Line points={[5, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
     </Group>

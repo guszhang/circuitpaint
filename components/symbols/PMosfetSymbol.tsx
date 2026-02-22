@@ -38,12 +38,13 @@ export default function PMosfetSymbol({
   onDragEnd,
 }: PMosfetSymbolProps) {
   const lineColor = strokeColor ?? 'black';
+  const renderRotation = ((rotation + 90) % 360) as SymbolRotation;
 
   return (
     <Group
       x={x}
       y={y}
-      rotation={rotation}
+      rotation={renderRotation}
       draggable={draggable}
       listening={listening}
       opacity={opacity}
@@ -53,13 +54,22 @@ export default function PMosfetSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-26} y={-14} width={52} height={28} fill="black" opacity={0} strokeWidth={0} listening={true} />
+      <Rect
+        x={-26}
+        y={-6}
+        width={52}
+        height={30}
+        fill="black"
+        opacity={0}
+        strokeWidth={0}
+        listening={true}
+      />
       {isSelected && (
         <Rect
           x={-26}
-          y={-14}
+          y={-6}
           width={52}
-          height={28}
+          height={30}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}
@@ -67,15 +77,49 @@ export default function PMosfetSymbol({
           listening={false}
         />
       )}
-      <Line points={[-20, 0, -8, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[-8, -8, -8, 8]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[0, -8, 0, 8]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[0, -4, 10, -4]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[0, 4, 10, 4]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[10, -4, 20, -4]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[10, 4, 20, 4]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line
+        points={[-8, 8, 8, 8]}
+        stroke={lineColor}
+        strokeWidth={2}
+        lineCap="round"
+        lineJoin="round"
+      /><Line
+        points={[-6, 12, 6, 12]}
+        stroke={lineColor}
+        strokeWidth={2}
+        lineCap="round"
+        lineJoin="round"
+      />
+      <Line
+        points={[0, 12, 0, 20]}
+        stroke={lineColor}
+        strokeWidth={1}
+        lineCap="round"
+        lineJoin="round"
+      />
+      <Line
+        points={[-20, 0, -6, 0, -6, 8]}
+        stroke={lineColor}
+        strokeWidth={1}
+        lineCap="round"
+        lineJoin="round"
+      />
+      <Line
+        points={[6, 8, 6, 0, 20, 0]}
+        stroke={lineColor}
+        strokeWidth={1}
+        lineCap="round"
+        lineJoin="round"
+      />
+      <Line
+        points={[-6, 0, 0, 0]}
+        stroke={lineColor}
+        strokeWidth={1}
+        lineCap="round"
+        lineJoin="round"
+      />
       <Arrow
-        points={[8, 7, 4, 7]}
+        points={[0, 8, 0, 0]}
         stroke={lineColor}
         fill={lineColor}
         strokeWidth={1}

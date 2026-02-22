@@ -68,19 +68,19 @@ export default function ControlledCurrentSourceSymbol({
           listening={false}
         />
       )}
-      <Line points={[0, -12, 10, 0, 0, 12, -10, 0, 0, -12]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
+      <Line points={[0, -12, 12, 0, 0, 12, -12, 0, 0, -12]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
       <Arrow
-        points={[0, 6, 0, -6]}
+        points={[6, 0, -6, 0]}
         stroke={lineColor}
         fill={lineColor}
-        strokeWidth={1.5}
+        strokeWidth={1}
         pointerLength={4}
         pointerWidth={4}
         lineCap="round"
         lineJoin="round"
       />
-      <Line points={[-20, 0, -10, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[10, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-20, 0, -12, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
     </Group>
   );
 }

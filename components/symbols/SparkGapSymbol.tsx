@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Group, Line, Rect } from 'react-konva';
+import { Arrow, Group, Line, Rect } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
 type SymbolRotation = 0 | 90 | 180 | 270;
@@ -38,12 +38,13 @@ export default function SparkGapSymbol({
   onDragEnd,
 }: SparkGapSymbolProps) {
   const lineColor = strokeColor ?? 'black';
+  const renderRotation = ((rotation + 90) % 360) as SymbolRotation; 
 
   return (
     <Group
       x={x}
       y={y}
-      rotation={rotation}
+      rotation={renderRotation}
       draggable={draggable}
       listening={listening}
       opacity={opacity}
@@ -67,10 +68,10 @@ export default function SparkGapSymbol({
           listening={false}
         />
       )}
-      <Line points={[-20, 0, -6, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[6, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[-6, -4, -1, 0, -6, 4]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[6, -4, 1, 0, 6, 4]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
+      <Line points={[-20, 0, -12, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Arrow points={[-12, 0, -2, 0]} stroke={lineColor} strokeWidth={2} fill={lineColor} pointerLength={3} pointerWidth={3} lineCap='round' lineJoin='round'/>
+      <Arrow points={[12, 0, 2, 0]} stroke={lineColor} strokeWidth={2} fill={lineColor} pointerLength={3} pointerWidth={3} lineCap='round' lineJoin='round'/>
     </Group>
   );
 }

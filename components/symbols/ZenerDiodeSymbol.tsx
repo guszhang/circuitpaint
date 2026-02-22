@@ -68,9 +68,7 @@ export default function ZenerDiodeSymbol({
         />
       )}
       <Line points={[5, 0, -5, -6, -5, 6, 5, 0]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[5, -5, 5, 5]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[3, -7, 5, -5]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
-      <Line points={[5, 5, 7, 7]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
+      <Line points={[7, -7, 5, -5, 5, 5, 3, 7]} stroke={lineColor} strokeWidth={2} lineCap="round" lineJoin="round" />
       <Line points={[-20, 0, -5, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
       <Line points={[5, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
     </Group>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Group, Line, Rect, Arrow } from 'react-konva';
+import { Group, Line, Rect, Arrow, Circle } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
 type SymbolRotation = 0 | 90 | 180 | 270;
@@ -56,9 +56,9 @@ export default function SwitchSymbol({
     >
       <Rect
         x={-26}
-        y={-6}
+        y={-12}
         width={52}
-        height={30}
+        height={24}
         fill="black"
         opacity={0}
         strokeWidth={0}
@@ -67,9 +67,9 @@ export default function SwitchSymbol({
       {isSelected && (
         <Rect
           x={-26}
-          y={-6}
+          y={-12}
           width={52}
-          height={30}
+          height={24}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}
@@ -78,55 +78,40 @@ export default function SwitchSymbol({
         />
       )}
       <Line
-        points={[-8, 8, 8, 8]}
+        points={[-20, 0, -12, 0]}
         stroke={lineColor}
-        strokeWidth={2}
+        strokeWidth={1}
         lineCap="round"
         lineJoin="round"
       /><Line
-        points={[-6, 12, 6, 12]}
+        points={[12, 0, 20, 0]}
+        stroke={lineColor}
+        strokeWidth={1}
+        lineCap="round"
+        lineJoin="round"
+      />
+      <Line
+        points={[-12, 0, 8, 8]}
         stroke={lineColor}
         strokeWidth={2}
         lineCap="round"
         lineJoin="round"
       />
-      <Line
-        points={[0, 12, 0, 20]}
+      <Circle
+        x={-12}
+        y={0}
+        radius={2}
         stroke={lineColor}
-        strokeWidth={1}
-        lineCap="round"
-        lineJoin="round"
+        strokeWidth={2}
+        fill="white"
       />
-      <Line
-        points={[-20, 0, -6, 0, -6, 8]}
+      <Circle
+        x={12}
+        y={0}
+        radius={2}
         stroke={lineColor}
-        strokeWidth={1}
-        lineCap="round"
-        lineJoin="round"
-      />
-      <Line
-        points={[0, 0, 20, 0]}
-        stroke={lineColor}
-        strokeWidth={1}
-        lineCap="round"
-        lineJoin="round"
-      />
-      <Line
-        points={[6, 0, 6, 8]}
-        stroke={lineColor}
-        strokeWidth={1}
-        lineCap="round"
-        lineJoin="round"
-      />
-      <Arrow
-        points={[0, 0, 0, 8]}
-        stroke={lineColor}
-        fill={lineColor}
-        strokeWidth={1}
-        pointerLength={3}
-        pointerWidth={3}
-        lineCap="round"
-        lineJoin="round"
+        strokeWidth={2}
+        fill="white"
       />
     </Group>
   );
