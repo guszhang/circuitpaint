@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Stage, Layer, Shape, Rect, Line, Circle, Group, Text } from 'react-konva';
+import { Stage, Layer, Shape, Rect, Line, Circle, Group, Text, Arrow } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
@@ -26,13 +26,29 @@ import {
 import { useInteractionTriage } from './canvas/useInteractionTriage';
 import styles from './CanvasViewport.module.css';
 import ResistorSymbol, { type ResistorRotation } from './symbols/ResistorSymbol';
+import PotentiometerSymbol from './symbols/PotentiometerSymbol';
 import CapacitorSymbol from './symbols/CapacitorSymbol';
+import PolarisedCapacitorSymbol from './symbols/PolarisedCapacitorSymbol';
+import VariableCapacitorSymbol from './symbols/VariableCapacitorSymbol';
 import InductorSymbol from './symbols/InductorSymbol';
+import VariableInductorSymbol from './symbols/VariableInductorSymbol';
+import TransformerSymbol from './symbols/TransformerSymbol';
 import DiodeSymbol from './symbols/DiodeSymbol';
+import ZenerDiodeSymbol from './symbols/ZenerDiodeSymbol';
+import SchottkyDiodeSymbol from './symbols/SchottkyDiodeSymbol';
 import SwitchSymbol from './symbols/SwitchSymbol';
+import NMosfetSymbol from './symbols/NMosfetSymbol';
+import PMosfetSymbol from './symbols/PMosfetSymbol';
+import NpnBjtSymbol from './symbols/NpnBjtSymbol';
+import PnpBjtSymbol from './symbols/PnpBjtSymbol';
+import SparkGapSymbol from './symbols/SparkGapSymbol';
 import IcSymbol from './symbols/IcSymbol';
 import GroundSymbol from './symbols/GroundSymbol';
 import SourceSymbol from './symbols/SourceSymbol';
+import CurrentSourceSymbol from './symbols/CurrentSourceSymbol';
+import AcSourceSymbol from './symbols/AcSourceSymbol';
+import ControlledVoltageSourceSymbol from './symbols/ControlledVoltageSourceSymbol';
+import ControlledCurrentSourceSymbol from './symbols/ControlledCurrentSourceSymbol';
 
 interface CanvasViewportProps {
   onContextMenu: (x: number, y: number) => void;
@@ -60,7 +76,7 @@ const CANVAS_FILE_VERSION = 1;
 const rotateBy90 = (rotation: Rotation) => ((rotation + 90) % 360) as Rotation;
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 const LABEL_FONT_SIZE = 8;
-const LABEL_FONT_FAMILY = 'Arial';
+const LABEL_FONT_FAMILY = 'Times New Roman, Georgia, serif';
 const LABEL_PADDING_X = 6;
 const LABEL_PADDING_Y = 4;
 
@@ -229,6 +245,33 @@ function intersects(
   );
 }
 
+const COMPONENT_SYMBOL_BY_TOOL_ID: Record<ComponentToolId, React.ComponentType<any>> = {
+  resistor: ResistorSymbol,
+  potentiometer: PotentiometerSymbol,
+  capacitor: CapacitorSymbol,
+  'polarised-capacitor': PolarisedCapacitorSymbol,
+  'variable-capacitor': VariableCapacitorSymbol,
+  inductor: InductorSymbol,
+  'variable-inductor': VariableInductorSymbol,
+  transformer: TransformerSymbol,
+  diode: DiodeSymbol,
+  'zener-diode': ZenerDiodeSymbol,
+  'schottky-diode': SchottkyDiodeSymbol,
+  switch: SwitchSymbol,
+  'n-mosfet': NMosfetSymbol,
+  'p-mosfet': PMosfetSymbol,
+  'npn-bjt': NpnBjtSymbol,
+  'pnp-bjt': PnpBjtSymbol,
+  'spark-gap': SparkGapSymbol,
+  ic: IcSymbol,
+  ground: GroundSymbol,
+  source: SourceSymbol,
+  'current-source': CurrentSourceSymbol,
+  'ac-source': AcSourceSymbol,
+  'controlled-voltage-source': ControlledVoltageSourceSymbol,
+  'controlled-current-source': ControlledCurrentSourceSymbol,
+};
+
 function ComponentGlyph({
   toolId,
   x,
@@ -260,22 +303,7 @@ function ComponentGlyph({
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }) {
-  const SymbolComponent =
-    toolId === 'resistor'
-      ? ResistorSymbol
-      : toolId === 'capacitor'
-        ? CapacitorSymbol
-        : toolId === 'inductor'
-          ? InductorSymbol
-          : toolId === 'diode'
-            ? DiodeSymbol
-            : toolId === 'switch'
-              ? SwitchSymbol
-              : toolId === 'ic'
-                ? IcSymbol
-                : toolId === 'ground'
-                  ? GroundSymbol
-                  : SourceSymbol;
+  const SymbolComponent = COMPONENT_SYMBOL_BY_TOOL_ID[toolId];
 
   return (
     <SymbolComponent
@@ -352,7 +380,86 @@ function DrawingGlyph({
     );
   }
 
-  const glyphLabel: Record<Exclude<NonWireDrawingToolId, 'joint'>, string> = {
+  if (drawing.toolId === 'voltage-annotation') {
+    return (
+      <Group
+        x={drawing.x}
+        y={drawing.y}
+        rotation={drawing.rotation}
+        draggable={draggable}
+        listening={listening}
+        opacity={opacity}
+        dragBoundFunc={dragBoundFunc}
+        onMouseDown={onMouseDown}
+        onDblClick={onDoubleClick}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
+        onDragEnd={onDragEnd}
+      >
+        <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
+        {isSelected && (
+          <Rect
+            x={-20}
+            y={-12}
+            width={40}
+            height={24}
+            stroke="#4f80ff"
+            strokeWidth={1}
+            dash={[4, 4]}
+            listening={false}
+          />
+        )}
+        <Line points={[-10, 0, -2, 0]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
+        <Line points={[-6, -4, -6, 4]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
+        <Line points={[2, 0, 10, 0]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
+      </Group>
+    );
+  }
+
+  if (drawing.toolId === 'current-annotation') {
+    return (
+      <Group
+        x={drawing.x}
+        y={drawing.y}
+        rotation={drawing.rotation}
+        draggable={draggable}
+        listening={listening}
+        opacity={opacity}
+        dragBoundFunc={dragBoundFunc}
+        onMouseDown={onMouseDown}
+        onDblClick={onDoubleClick}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
+        onDragEnd={onDragEnd}
+      >
+        <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
+        {isSelected && (
+          <Rect
+            x={-20}
+            y={-12}
+            width={40}
+            height={24}
+            stroke="#4f80ff"
+            strokeWidth={1}
+            dash={[4, 4]}
+            listening={false}
+          />
+        )}
+        <Arrow
+          points={[-12, 0, 12, 0]}
+          stroke={strokeColor}
+          fill={strokeColor}
+          strokeWidth={1.8}
+          pointerLength={5}
+          pointerWidth={5}
+          lineCap="round"
+          lineJoin="round"
+        />
+      </Group>
+    );
+  }
+
+  const glyphLabel: Partial<Record<Exclude<NonWireDrawingToolId, 'joint'>, string>> = {
     label: 'LBL',
     text: 'TXT',
   };
@@ -430,7 +537,8 @@ function DrawingGlyph({
         verticalAlign="middle"
         text={
           labelText ??
-          glyphLabel[drawing.toolId as Exclude<NonWireDrawingToolId, 'joint'>]
+          glyphLabel[drawing.toolId as Exclude<NonWireDrawingToolId, 'joint'>] ??
+          ''
         }
         fill={strokeColor}
         listening={false}
@@ -1757,7 +1865,7 @@ export default function CanvasViewport({
       <div className={styles.hud}>
         <div>Zoom: {(camera.zoom * 100).toFixed(0)}%</div>
         <div>
-          World: ({mouseWorldPos.x.toFixed(0)}, {mouseWorldPos.y.toFixed(0)})
+          Position: ({mouseWorldPos.x.toFixed(0)}, {mouseWorldPos.y.toFixed(0)})
         </div>
       </div>
     </div>

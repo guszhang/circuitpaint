@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { ToolId } from '../../lib/tools';
 import ToolPanel from './ToolPanel';
 
@@ -10,12 +10,113 @@ interface LeftToolbarProps {
 }
 
 export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarProps) {
+  const [resistorFamilyTool, setResistorFamilyTool] = useState<'resistor' | 'potentiometer'>('resistor');
+  const [capacitorFamilyTool, setCapacitorFamilyTool] = useState<
+    'capacitor' | 'polarised-capacitor' | 'variable-capacitor'
+  >('capacitor');
+  const [inductorFamilyTool, setInductorFamilyTool] = useState<
+    'inductor' | 'variable-inductor' | 'transformer'
+  >('inductor');
+  const [diodeFamilyTool, setDiodeFamilyTool] = useState<'diode' | 'zener-diode' | 'schottky-diode'>('diode');
+  const [switchFamilyTool, setSwitchFamilyTool] = useState<
+    'switch' | 'n-mosfet' | 'p-mosfet' | 'npn-bjt' | 'pnp-bjt' | 'spark-gap'
+  >('switch');
+  const [sourceFamilyTool, setSourceFamilyTool] = useState<
+    'source' | 'current-source' | 'ac-source' | 'controlled-voltage-source' | 'controlled-current-source'
+  >('source');
+
+  useEffect(() => {
+    if (selectedTool === 'resistor' || selectedTool === 'potentiometer') {
+      setResistorFamilyTool(selectedTool);
+    }
+    if (
+      selectedTool === 'capacitor' ||
+      selectedTool === 'polarised-capacitor' ||
+      selectedTool === 'variable-capacitor'
+    ) {
+      setCapacitorFamilyTool(selectedTool);
+    }
+    if (selectedTool === 'inductor' || selectedTool === 'variable-inductor' || selectedTool === 'transformer') {
+      setInductorFamilyTool(selectedTool);
+    }
+    if (selectedTool === 'diode' || selectedTool === 'zener-diode' || selectedTool === 'schottky-diode') {
+      setDiodeFamilyTool(selectedTool);
+    }
+    if (
+      selectedTool === 'switch' ||
+      selectedTool === 'n-mosfet' ||
+      selectedTool === 'p-mosfet' ||
+      selectedTool === 'npn-bjt' ||
+      selectedTool === 'pnp-bjt' ||
+      selectedTool === 'spark-gap'
+    ) {
+      setSwitchFamilyTool(selectedTool);
+    }
+    if (
+      selectedTool === 'source' ||
+      selectedTool === 'current-source' ||
+      selectedTool === 'ac-source' ||
+      selectedTool === 'controlled-voltage-source' ||
+      selectedTool === 'controlled-current-source'
+    ) {
+      setSourceFamilyTool(selectedTool);
+    }
+  }, [selectedTool]);
+
   return (
     <ToolPanel
       title="Components"
       group="component"
       side="left"
-      onToolSelect={onToolSelect}
+      toolIds={[resistorFamilyTool, capacitorFamilyTool, inductorFamilyTool, diodeFamilyTool, switchFamilyTool, 'ic', sourceFamilyTool, 'ground']}
+      submenuByToolId={{
+        [resistorFamilyTool]: ['resistor', 'potentiometer'],
+        [capacitorFamilyTool]: ['capacitor', 'polarised-capacitor', 'variable-capacitor'],
+        [inductorFamilyTool]: ['inductor', 'variable-inductor', 'transformer'],
+        [diodeFamilyTool]: ['diode', 'zener-diode', 'schottky-diode'],
+        [switchFamilyTool]: ['switch', 'n-mosfet', 'p-mosfet', 'npn-bjt', 'pnp-bjt', 'spark-gap'],
+        [sourceFamilyTool]: [
+          'source',
+          'current-source',
+          'ac-source',
+          'controlled-voltage-source',
+          'controlled-current-source',
+        ],
+      }}
+      onToolSelect={(tool) => {
+        if (tool === 'resistor' || tool === 'potentiometer') {
+          setResistorFamilyTool(tool);
+        }
+        if (tool === 'capacitor' || tool === 'polarised-capacitor' || tool === 'variable-capacitor') {
+          setCapacitorFamilyTool(tool);
+        }
+        if (tool === 'inductor' || tool === 'variable-inductor' || tool === 'transformer') {
+          setInductorFamilyTool(tool);
+        }
+        if (tool === 'diode' || tool === 'zener-diode' || tool === 'schottky-diode') {
+          setDiodeFamilyTool(tool);
+        }
+        if (
+          tool === 'switch' ||
+          tool === 'n-mosfet' ||
+          tool === 'p-mosfet' ||
+          tool === 'npn-bjt' ||
+          tool === 'pnp-bjt' ||
+          tool === 'spark-gap'
+        ) {
+          setSwitchFamilyTool(tool);
+        }
+        if (
+          tool === 'source' ||
+          tool === 'current-source' ||
+          tool === 'ac-source' ||
+          tool === 'controlled-voltage-source' ||
+          tool === 'controlled-current-source'
+        ) {
+          setSourceFamilyTool(tool);
+        }
+        onToolSelect?.(tool);
+      }}
       selectedTool={selectedTool}
       renderIcon={(tool) => {
         switch (tool.id) {
@@ -32,6 +133,21 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
                 />
               </svg>
             );
+          case 'potentiometer':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <polyline
+                  points="3,12 6,12 7,9 9,15 11,9 13,15 15,9 17,15 18,12 21,12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+                <line x1="16" y1="4" x2="11" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <polygon points="10,7 11,11 14,9" fill="currentColor" />
+              </svg>
+            );
           case 'capacitor':
             return (
               <svg width="24" height="24" viewBox="0 0 24 24">
@@ -39,6 +155,28 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
                 <line x1="10" y1="7" x2="10" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
                 <line x1="14" y1="7" x2="14" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
                 <line x1="15" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+              </svg>
+            );
+          case 'polarised-capacitor':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="4" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="10" y1="7" x2="10" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <path d="M14 7 Q16 12 14 17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="15" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="6" y1="7" x2="6" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap='round' />
+                <line x1="4" y1="9" x2="8" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap='round' />
+              </svg>
+            );
+          case 'variable-capacitor':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="4" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="10" y1="7" x2="10" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="14" y1="7" x2="14" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="15" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="17" y1="5" x2="9" y2="17" stroke="currentColor" strokeWidth="1.7" strokeLinecap='round' />
+                <polygon points="8,14 8,18 11,16" fill="currentColor" />
               </svg>
             );
           case 'inductor':
@@ -53,6 +191,29 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
                 />
               </svg>
             );
+          case 'variable-inductor':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <path
+                  d="M4 12h2c1 0 1-4 3-4s2 4 4 4 2-4 4-4 2 4 4 4h1"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <line x1="18" y1="5" x2="8" y2="17" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+                <polygon points="7,14 7,18 10,16" fill="currentColor" />
+              </svg>
+            );
+          case 'transformer':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <path d="M2 12h1.5c1 0 1-3 2.5-3s1.5 3 3 3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <path d="M11 12c1.5 0 1.5-3 3-3s1.5 3 3 3h1.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="10" y1="8" x2="10" y2="16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            );
           case 'diode':
             return (
               <svg width="24" height="24" viewBox="0 0 24 24">
@@ -62,12 +223,89 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
                 <line x1="17" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
               </svg>
             );
+          case 'zener-diode':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="4" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <polygon points="9,6 17,12 9,18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin='round'/>
+                <line x1="17" y1="7" x2="17" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
+                <line x1="15" y1="7" x2="17" y2="9" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
+                <line x1="17" y1="15" x2="19" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
+                <line x1="17" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
+              </svg>
+            );
+          case 'schottky-diode':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="4" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <polygon points="9,6 17,12 9,18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin='round'/>
+                <line x1="17" y1="6" x2="17" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
+                <line x1="19" y1="8" x2="17" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
+                <line x1="19" y1="16" x2="17" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
+                <line x1="17" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round'/>
+              </svg>
+            );
           case 'switch':
             return (
               <svg width="24" height="24" viewBox="0 0 24 24">
                 <line x1="2" y1="12" x2="8" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
                 <line x1="16" y1="12" x2="22" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
                 <line x1="8" y1="12" x2="16" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+              </svg>
+            );
+          case 'n-mosfet':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="4" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="9" y1="7" x2="9" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="12" y1="10" x2="18" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="12" y1="14" x2="18" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="18" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="18" y1="14" x2="21" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <polygon points="14,15 16,13.5 14,12" fill="currentColor" />
+              </svg>
+            );
+          case 'p-mosfet':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="4" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="9" y1="7" x2="9" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="12" y1="10" x2="18" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="12" y1="14" x2="18" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="18" y1="10" x2="21" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="18" y1="14" x2="21" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <polygon points="16,12 14,13.5 16,15" fill="currentColor" />
+              </svg>
+            );
+          case 'npn-bjt':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="4" y1="12" x2="10" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="10" y1="8" x2="10" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="10" y1="10" x2="18" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="10" y1="14" x2="18" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <polygon points="15,16 17.5,16 16.5,14" fill="currentColor" />
+              </svg>
+            );
+          case 'pnp-bjt':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="4" y1="12" x2="10" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="10" y1="8" x2="10" y2="16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="10" y1="10" x2="18" y2="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="10" y1="14" x2="18" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <polygon points="13,14 14,16 16,14.8" fill="currentColor" />
+              </svg>
+            );
+          case 'spark-gap':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="3" y1="12" x2="9" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="15" y1="12" x2="21" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <polyline points="9,9 11,12 9,15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <polyline points="15,9 13,12 15,15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             );
           case 'ic':
@@ -100,6 +338,46 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
                 <line x1="10" y1="9" x2="14" y2="9" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
                 <line x1="12" y1="7" x2="12" y2="11" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
                 <line x1="10" y1="15" x2="14" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+              </svg>
+            );
+          case 'current-source':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
+                <line x1="12" y1="2" x2="12" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="12" y1="20" x2="12" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="12" y1="16" x2="12" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <polygon points="12,7 9,11 15,11" fill="currentColor" />
+              </svg>
+            );
+          case 'ac-source':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2" />
+                <line x1="12" y1="2" x2="12" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="12" y1="20" x2="12" y2="22" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <path d="M8 12c1.2-2 2.8-2 4 0s2.8 2 4 0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            );
+          case 'controlled-voltage-source':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <polygon points="12,4 18,12 12,20 6,12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                <line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="10" y1="10" x2="14" y2="10" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="10" y1="14" x2="14" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+              </svg>
+            );
+          case 'controlled-current-source':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <polygon points="12,4 18,12 12,20 6,12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                <line x1="12" y1="1" x2="12" y2="4" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="12" y1="20" x2="12" y2="23" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <line x1="12" y1="15" x2="12" y2="9" stroke="currentColor" strokeWidth="2" strokeLinecap='round' />
+                <polygon points="12,8 9,11 15,11" fill="currentColor" />
               </svg>
             );
           default:

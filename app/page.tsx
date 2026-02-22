@@ -154,8 +154,8 @@ export default function Home() {
     viewportControlsRef.current = controls;
   }, []);
 
-  const handleZoomTo800 = useCallback(() => {
-    viewportControlsRef.current?.setZoomLevel(8);
+  const handleZoomTo100 = useCallback(() => {
+    viewportControlsRef.current?.setZoomLevel(1);
   }, []);
 
   const handleEditUndo = useCallback(() => {
@@ -326,7 +326,7 @@ export default function Home() {
       <MenuBar
         onToggleGrid={handleToggleGrid}
         gridVisible={showGrid}
-        onZoomTo800={handleZoomTo800}
+        onZoomTo100={handleZoomTo100}
         onEditUndo={handleEditUndo}
         onEditRedo={handleEditRedo}
         onEditCut={handleEditCut}
@@ -339,7 +339,7 @@ export default function Home() {
       <div className={styles.mainContent}>
         <LeftToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
         <CanvasViewport
-          onContextMenu={handleContextMenu}
+          onContextMenu={() => {}}
           selectedTool={selectedTool}
           onToggleGrid={handleToggleGrid}
           showGrid={showGrid}
@@ -348,13 +348,6 @@ export default function Home() {
         />
         <RightToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
       </div>
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          onClose={handleContextMenuClose}
-        />
-      )}
     </div>
   );
 }

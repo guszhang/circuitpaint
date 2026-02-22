@@ -22,7 +22,8 @@ body {
 }
 
 body {
-  background-color: #f0f0f0;
+  background: linear-gradient(180deg, #eef4ff 0%, #f7fbff 100%);
+  color: #1f2a37;
 }
 
 /* Ensure no scrollbars appear */

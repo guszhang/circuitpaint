@@ -16,8 +16,9 @@
   position: absolute;
   bottom: 8px;
   left: 8px;
-  background-color: rgba(44, 62, 80, 0.85);
-  color: #ecf0f1;
+  background-color: rgba(226, 238, 255, 0.92);
+  color: #2a3b57;
+  border: 1px solid #bfd2ee;
   padding: 8px 12px;
   border-radius: 4px;
   font-size: 12px;

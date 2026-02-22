@@ -12,7 +12,7 @@ interface RightToolbarProps {
 export default function RightToolbar({ onToolSelect, selectedTool }: RightToolbarProps) {
   return (
     <ToolPanel
-      title="Wiring & Annotation"
+      title="Tools"
       group="drawing"
       side="right"
       onToolSelect={onToolSelect}
@@ -45,6 +45,21 @@ export default function RightToolbar({ onToolSelect, selectedTool }: RightToolba
               <svg width="24" height="24" viewBox="0 0 24 24">
                 <line x1="6" y1="7" x2="18" y2="7" stroke="currentColor" strokeWidth="2" />
                 <line x1="12" y1="7" x2="12" y2="19" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            );
+          case 'voltage-annotation':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="7" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="10" y1="9" x2="10" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <line x1="16" y1="12" x2="20" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            );
+          case 'current-annotation':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <polygon points="19,12 14,9 14,15" fill="currentColor" />
               </svg>
             );
           default:
