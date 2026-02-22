@@ -14,7 +14,6 @@ const TOOL_GROUP_CONFIG = {
     { id: 'wire', label: 'Wire' },
     { id: 'label', label: 'Label' },
     { id: 'text', label: 'Text' },
-    { id: 'note', label: 'Note' },
   ],
 } as const;
 

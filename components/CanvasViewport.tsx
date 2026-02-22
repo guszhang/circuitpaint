@@ -15,6 +15,7 @@ import {
 import { DOT_RADIUS, GRID_SPACING, snapToGrid } from './canvas/grid';
 import {
   type ClipboardData,
+  type CanvasFile,
   type ComponentEntity,
   type DrawingEntity,
   type NonWireDrawingToolId,
@@ -50,17 +51,63 @@ export interface CanvasViewportControls {
   cutSelection: () => void;
   pasteSelection: () => void;
   deleteSelection: () => void;
+  serializeScene: () => CanvasFile;
+  loadScene: (file: CanvasFile) => void;
 }
 
 const DRAG_THRESHOLD = 5;
+const CANVAS_FILE_VERSION = 1;
 const rotateBy90 = (rotation: Rotation) => ((rotation + 90) % 360) as Rotation;
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+const LABEL_FONT_SIZE = 8;
+const LABEL_FONT_FAMILY = 'Arial';
+const LABEL_PADDING_X = 6;
+const LABEL_PADDING_Y = 4;
+
+function measureLabelText(text: string) {
+  if (typeof document === 'undefined') {
+    return { width: text.length * LABEL_FONT_SIZE * 0.6, height: LABEL_FONT_SIZE * 1.2 };
+  }
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    return { width: text.length * LABEL_FONT_SIZE * 0.6, height: LABEL_FONT_SIZE * 1.2 };
+  }
+  ctx.font = `${LABEL_FONT_SIZE}px ${LABEL_FONT_FAMILY}`;
+  const metrics = ctx.measureText(text);
+  const height =
+    metrics.actualBoundingBoxAscent !== undefined && metrics.actualBoundingBoxDescent !== undefined
+      ? metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
+      : LABEL_FONT_SIZE * 1.2;
+  return { width: metrics.width, height };
+}
 
 function cloneScene(scene: SceneData): SceneData {
   return {
     components: scene.components.map((component) => ({ ...component })),
     drawings: scene.drawings.map((drawing) => ({ ...drawing })),
     wires: scene.wires.map((wire) => ({
+      ...wire,
+      vertices: wire.vertices.map((point) => ({ ...point })),
+    })),
+  };
+}
+
+function toCanvasFile(scene: SceneData): CanvasFile {
+  const clone = cloneScene(scene);
+  return {
+    version: CANVAS_FILE_VERSION,
+    components: clone.components,
+    drawings: clone.drawings,
+    wires: clone.wires,
+  };
+}
+
+function fromCanvasFile(file: CanvasFile): SceneData {
+  return {
+    components: file.components.map((component) => ({ ...component })),
+    drawings: file.drawings.map((drawing) => ({ ...drawing })),
+    wires: file.wires.map((wire) => ({
       ...wire,
       vertices: wire.vertices.map((point) => ({ ...point })),
     })),
@@ -131,6 +178,22 @@ function getDrawingBounds(drawing: DrawingEntity) {
       maxX: drawing.x + 4,
       minY: drawing.y - 4,
       maxY: drawing.y + 4,
+    };
+  }
+
+  if (drawing.toolId === 'label' || drawing.toolId === 'text') {
+    const text =
+      drawing.toolId === 'label'
+        ? drawing.text?.trim() || 'Label'
+        : drawing.text?.trim() || 'Text';
+    const metrics = measureLabelText(text);
+    const width = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
+    const height = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+    return {
+      minX: drawing.x - width / 2,
+      maxX: drawing.x + width / 2,
+      minY: drawing.y - height / 2,
+      maxY: drawing.y + height / 2,
     };
   }
 
@@ -241,6 +304,7 @@ function DrawingGlyph({
   strokeColor = 'black',
   opacity = 1,
   onMouseDown,
+  onDoubleClick,
   dragBoundFunc,
   onDragStart,
   onDragMove,
@@ -253,6 +317,7 @@ function DrawingGlyph({
   strokeColor?: string;
   opacity?: number;
   onMouseDown?: (e: KonvaEventObject<MouseEvent>) => void;
+  onDoubleClick?: (e: KonvaEventObject<MouseEvent>) => void;
   dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
   onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
@@ -290,8 +355,24 @@ function DrawingGlyph({
   const glyphLabel: Record<Exclude<NonWireDrawingToolId, 'joint'>, string> = {
     label: 'LBL',
     text: 'TXT',
-    note: 'NOTE',
   };
+
+  const labelText =
+    drawing.toolId === 'label'
+      ? drawing.text?.trim() || 'Label'
+      : drawing.toolId === 'text'
+        ? drawing.text?.trim() || 'Text'
+        : undefined;
+  const labelMetrics = labelText ? measureLabelText(labelText) : null;
+  const labelBox = labelMetrics
+    ? {
+        width: Math.max(24, labelMetrics.width + LABEL_PADDING_X * 2),
+        height: Math.max(16, labelMetrics.height + LABEL_PADDING_Y * 2),
+      }
+    : null;
+  const labelBoxX = labelBox ? -labelBox.width / 2 : -18;
+  const labelBoxY = labelBox ? -labelBox.height / 2 : -10;
+  const showFrame = drawing.toolId === 'label';
 
   return (
     <Group
@@ -303,33 +384,54 @@ function DrawingGlyph({
       opacity={opacity}
       dragBoundFunc={dragBoundFunc}
       onMouseDown={onMouseDown}
+      onDblClick={onDoubleClick}
       onDragStart={onDragStart}
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
+      <Rect
+        x={labelBox ? labelBoxX - 2 : -20}
+        y={labelBox ? labelBoxY - 2 : -12}
+        width={labelBox ? labelBox.width + 4 : 40}
+        height={labelBox ? labelBox.height + 4 : 24}
+        fill="black"
+        opacity={0}
+      />
       {isSelected && (
         <Rect
-          x={-20}
-          y={-12}
-          width={40}
-          height={24}
+          x={labelBox ? labelBoxX - 2 : -20}
+          y={labelBox ? labelBoxY - 2 : -12}
+          width={labelBox ? labelBox.width + 4 : 40}
+          height={labelBox ? labelBox.height + 4 : 24}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}
           listening={false}
         />
       )}
-      <Rect x={-18} y={-10} width={36} height={20} stroke={strokeColor} strokeWidth={1.2} />
+      {showFrame && (
+        <Rect
+          x={labelBox ? labelBoxX : -18}
+          y={labelBox ? labelBoxY : -10}
+          width={labelBox ? labelBox.width : 36}
+          height={labelBox ? labelBox.height : 20}
+          stroke={strokeColor}
+          strokeWidth={1.2}
+        />
+      )}
       <Text
-        x={-17}
-        y={-7}
-        width={34}
-        height={14}
-        fontSize={8}
+        x={labelBox ? labelBoxX + LABEL_PADDING_X : -17}
+        y={labelBox ? labelBoxY + LABEL_PADDING_Y : -7}
+        width={labelBox ? labelBox.width - LABEL_PADDING_X * 2 : 34}
+        height={labelBox ? labelBox.height - LABEL_PADDING_Y * 2 : 14}
+        fontSize={LABEL_FONT_SIZE}
+        fontFamily={LABEL_FONT_FAMILY}
         align="center"
         verticalAlign="middle"
-        text={glyphLabel[drawing.toolId as Exclude<NonWireDrawingToolId, 'joint'>]}
+        text={
+          labelText ??
+          glyphLabel[drawing.toolId as Exclude<NonWireDrawingToolId, 'joint'>]
+        }
         fill={strokeColor}
         listening={false}
       />
@@ -693,6 +795,30 @@ export default function CanvasViewport({
     [camera, interactionTriage, isPasteMode, selectedTool]
   );
 
+  const handleLabelDoubleClick = useCallback(
+    (drawing: DrawingEntity) => {
+      return (e: KonvaEventObject<MouseEvent>) => {
+        if (selectedTool || isPasteMode || (drawing.toolId !== 'label' && drawing.toolId !== 'text')) {
+          return;
+        }
+        e.cancelBubble = true;
+        const current = drawing.text ?? '';
+        const promptLabel = drawing.toolId === 'text' ? 'Edit text:' : 'Edit label text:';
+        const next = window.prompt(promptLabel, current);
+        if (next === null || next === current) {
+          return;
+        }
+        updateScene((prev) => ({
+          ...prev,
+          drawings: prev.drawings.map((item) =>
+            item.id === drawing.id ? { ...item, text: next } : item
+          ),
+        }));
+      };
+    },
+    [isPasteMode, selectedTool, updateScene]
+  );
+
   const undo = useCallback(() => {
     const previous = undoStackRef.current.pop();
     if (!previous) {
@@ -759,6 +885,7 @@ export default function CanvasViewport({
         x: drawing.x - anchor.x,
         y: drawing.y - anchor.y,
         rotation: drawing.rotation,
+        text: drawing.text,
       })),
       wires: selectedWires.map((wire) => ({
         points: getAbsoluteWirePoints(wire).map((point) => ({
@@ -818,6 +945,27 @@ export default function CanvasViewport({
     return true;
   }, [copySelection, deleteSelection]);
 
+  const serializeScene = useCallback(() => {
+    return toCanvasFile(sceneRef.current);
+  }, []);
+
+  const loadScene = useCallback(
+    (file: CanvasFile) => {
+      const nextScene = fromCanvasFile(file);
+      undoStackRef.current = [];
+      redoStackRef.current = [];
+      dragHistoryCapturedRef.current = false;
+      sceneRef.current = nextScene;
+      setScene(nextScene);
+      clearSelection();
+      setClipboard(null);
+      setIsPasteMode(false);
+      setWireDraft(null);
+      setIsWirePointDragging(false);
+    },
+    [clearSelection]
+  );
+
   const setZoomLevel = useCallback((targetZoom: number) => {
     const clamped = clampZoom(targetZoom);
     setCamera((prev) => {
@@ -857,8 +1005,20 @@ export default function CanvasViewport({
       deleteSelection: () => {
         deleteSelection();
       },
+      serializeScene,
+      loadScene,
     }),
-    [copySelection, cutSelection, deleteSelection, pasteSelection, redo, setZoomLevel, undo]
+    [
+      copySelection,
+      cutSelection,
+      deleteSelection,
+      loadScene,
+      pasteSelection,
+      redo,
+      serializeScene,
+      setZoomLevel,
+      undo,
+    ]
   );
 
   useEffect(() => {
@@ -997,6 +1157,12 @@ export default function CanvasViewport({
         }
 
         if (activeDrawingTool) {
+          const labelText =
+            activeDrawingTool === 'label'
+              ? 'Label'
+              : activeDrawingTool === 'text'
+                ? 'Text'
+                : undefined;
           updateScene((prev) => ({
             ...prev,
             drawings: [
@@ -1007,6 +1173,7 @@ export default function CanvasViewport({
                 x: snapped.x,
                 y: snapped.y,
                 rotation: placementRotation,
+                text: labelText,
               },
             ],
           }));
@@ -1483,6 +1650,7 @@ export default function CanvasViewport({
               drawing={drawing}
               isSelected={selectedDrawingSet.has(drawing.id)}
               onMouseDown={handleEntityMouseDown('drawing', drawing.id)}
+              onDoubleClick={handleLabelDoubleClick(drawing)}
             />
           ))}
 

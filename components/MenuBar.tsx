@@ -13,6 +13,8 @@ interface MenuBarProps {
   onEditCopy?: () => void;
   onEditPaste?: () => void;
   onEditDelete?: () => void;
+  onFileOpen?: () => void;
+  onFileSave?: () => void;
 }
 
 type MenuItem = string | { label: string; onSelect?: () => void };
@@ -27,12 +29,20 @@ export default function MenuBar({
   onEditCopy,
   onEditPaste,
   onEditDelete,
+  onFileOpen,
+  onFileSave,
 }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuBarRef = useRef<HTMLDivElement>(null);
 
   const menus: Record<string, MenuItem[]> = {
-    File: ['New', 'Open', 'Save', 'Save As', 'Export', 'Exit'],
+    File: [
+      'New',
+      { label: 'Open', onSelect: onFileOpen },
+      { label: 'Save', onSelect: onFileSave },
+      'Export',
+      'Exit',
+    ],
     Edit: [
       { label: 'Undo', onSelect: onEditUndo },
       { label: 'Redo', onSelect: onEditRedo },

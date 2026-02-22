@@ -19,6 +19,7 @@ export interface DrawingEntity {
   x: number;
   y: number;
   rotation: Rotation;
+  text?: string;
 }
 
 export interface WireEntity {
@@ -29,6 +30,13 @@ export interface WireEntity {
 }
 
 export interface SceneData {
+  components: ComponentEntity[];
+  drawings: DrawingEntity[];
+  wires: WireEntity[];
+}
+
+export interface CanvasFile {
+  version: 1;
   components: ComponentEntity[];
   drawings: DrawingEntity[];
   wires: WireEntity[];
