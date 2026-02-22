@@ -89,10 +89,9 @@ export default function NpnBjtSymbol({
         stroke={lineColor}
         fill={lineColor}
         strokeWidth={2}
-        pointerLength={3}
-        pointerWidth={3}
+        pointerLength={2}
+        pointerWidth={2}
         lineCap="round"
-        lineJoin="round"
       />
       <Line
         points={[0, 8, 0, 20]}
