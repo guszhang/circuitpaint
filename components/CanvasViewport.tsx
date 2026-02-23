@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Stage, Layer, Shape, Rect, Line, Circle, Group, Text, Arrow } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
-import Latex from 'react-latex-next';
+import Latex from './Latex';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
 import { getNextZoomLevel, clampZoom } from '../lib/zoom';
 import {

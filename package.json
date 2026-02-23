@@ -14,8 +14,7 @@
     "next": "^15.5.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-konva": "^19.2.2",
-    "react-latex-next": "^3.0.0"
+    "react-konva": "^19.2.2"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
