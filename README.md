@@ -103,4 +103,4 @@ circuitpaint/
 
 ## License
 
-Apache License 2.0
+GNU Affero General Public License version 3
