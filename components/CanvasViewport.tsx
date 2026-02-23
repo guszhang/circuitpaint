@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Stage, Layer, Shape, Rect, Line, Circle, Group, Text, Arrow } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
+import Latex from 'react-latex-next';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
 import { getNextZoomLevel, clampZoom } from '../lib/zoom';
 import {
@@ -43,6 +44,13 @@ import NpnBjtSymbol from './symbols/NpnBjtSymbol';
 import PnpBjtSymbol from './symbols/PnpBjtSymbol';
 import SparkGapSymbol from './symbols/SparkGapSymbol';
 import IcSymbol from './symbols/IcSymbol';
+import NotGateSymbol from './symbols/NotGateSymbol';
+import AndGateSymbol from './symbols/AndGateSymbol';
+import OrGateSymbol from './symbols/OrGateSymbol';
+import NandGateSymbol from './symbols/NandGateSymbol';
+import NorGateSymbol from './symbols/NorGateSymbol';
+import XorGateSymbol from './symbols/XorGateSymbol';
+import OpAmpSymbol from './symbols/OpAmpSymbol';
 import GroundSymbol from './symbols/GroundSymbol';
 import SourceSymbol from './symbols/SourceSymbol';
 import CurrentSourceSymbol from './symbols/CurrentSourceSymbol';
@@ -75,27 +83,61 @@ const DRAG_THRESHOLD = 5;
 const CANVAS_FILE_VERSION = 1;
 const rotateBy90 = (rotation: Rotation) => ((rotation + 90) % 360) as Rotation;
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-const LABEL_FONT_SIZE = 8;
+const LABEL_FONT_SIZE = 12;
 const LABEL_FONT_FAMILY = 'Times New Roman, Georgia, serif';
 const LABEL_PADDING_X = 6;
 const LABEL_PADDING_Y = 4;
+const MIN_TEXT_FONT_SIZE = 6;
+const MAX_TEXT_FONT_SIZE = 48;
+const DEFAULT_STROKE_COLOR = '#000000';
+const QUICK_COLOR_PALETTE = ['#000000', '#4f80ff', '#e53935', '#fb8c00', '#43a047', '#8e24aa'];
+const ZOOM_BASELINE = 2;
 
-function measureLabelText(text: string) {
+function normalizeColorForInput(color: string | undefined) {
+  if (!color) {
+    return DEFAULT_STROKE_COLOR;
+  }
+  if (/^#[\da-f]{3}$/i.test(color) || /^#[\da-f]{6}$/i.test(color)) {
+    return color;
+  }
+  if (color.toLowerCase() === 'black') {
+    return DEFAULT_STROKE_COLOR;
+  }
+  return DEFAULT_STROKE_COLOR;
+}
+
+function getDrawingFontSize(drawing: DrawingEntity) {
+  const candidate = drawing.fontSize ?? LABEL_FONT_SIZE;
+  return Math.min(MAX_TEXT_FONT_SIZE, Math.max(MIN_TEXT_FONT_SIZE, candidate));
+}
+
+function measureLabelText(text: string, fontSize = LABEL_FONT_SIZE) {
   if (typeof document === 'undefined') {
-    return { width: text.length * LABEL_FONT_SIZE * 0.6, height: LABEL_FONT_SIZE * 1.2 };
+    return { width: text.length * fontSize * 0.6, height: fontSize * 1.2 };
   }
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) {
-    return { width: text.length * LABEL_FONT_SIZE * 0.6, height: LABEL_FONT_SIZE * 1.2 };
+    return { width: text.length * fontSize * 0.6, height: fontSize * 1.2 };
   }
-  ctx.font = `${LABEL_FONT_SIZE}px ${LABEL_FONT_FAMILY}`;
+  ctx.font = `${fontSize}px ${LABEL_FONT_FAMILY}`;
   const metrics = ctx.measureText(text);
   const height =
     metrics.actualBoundingBoxAscent !== undefined && metrics.actualBoundingBoxDescent !== undefined
       ? metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
-      : LABEL_FONT_SIZE * 1.2;
+      : fontSize * 1.2;
   return { width: metrics.width, height };
+}
+
+function getDrawingDisplayText(drawing: DrawingEntity) {
+  if (drawing.toolId === 'text') {
+    return drawing.text?.trim() || 'Text';
+  }
+  return '';
+}
+
+function hasLatexSyntax(text: string) {
+  return /\$[^$]+\$|\\\(.+\\\)|\\\[.+\\\]/.test(text);
 }
 
 function cloneScene(scene: SceneData): SceneData {
@@ -137,7 +179,7 @@ function getAbsoluteWirePoints(wire: WireEntity): Point[] {
   }));
 }
 
-function makeWireFromAbsolutePoints(id: string, points: Point[]): WireEntity {
+function makeWireFromAbsolutePoints(id: string, points: Point[], strokeColor = DEFAULT_STROKE_COLOR): WireEntity {
   const first = points[0] ?? { x: 0, y: 0 };
   return {
     id,
@@ -146,6 +188,7 @@ function makeWireFromAbsolutePoints(id: string, points: Point[]): WireEntity {
     vertices: points.map((point, index) =>
       index === 0 ? { x: 0, y: 0 } : { x: point.x - first.x, y: point.y - first.y }
     ),
+    strokeColor,
   };
 }
 
@@ -197,12 +240,9 @@ function getDrawingBounds(drawing: DrawingEntity) {
     };
   }
 
-  if (drawing.toolId === 'label' || drawing.toolId === 'text') {
-    const text =
-      drawing.toolId === 'label'
-        ? drawing.text?.trim() || 'Label'
-        : drawing.text?.trim() || 'Text';
-    const metrics = measureLabelText(text);
+  if (drawing.toolId === 'text') {
+    const text = getDrawingDisplayText(drawing);
+    const metrics = measureLabelText(text, getDrawingFontSize(drawing));
     const width = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
     const height = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
     return {
@@ -264,6 +304,13 @@ const COMPONENT_SYMBOL_BY_TOOL_ID: Record<ComponentToolId, React.ComponentType<a
   'pnp-bjt': PnpBjtSymbol,
   'spark-gap': SparkGapSymbol,
   ic: IcSymbol,
+  'not-gate': NotGateSymbol,
+  'and-gate': AndGateSymbol,
+  'or-gate': OrGateSymbol,
+  'nand-gate': NandGateSymbol,
+  'nor-gate': NorGateSymbol,
+  'xor-gate': XorGateSymbol,
+  opamp: OpAmpSymbol,
   ground: GroundSymbol,
   source: SourceSymbol,
   'current-source': CurrentSourceSymbol,
@@ -380,7 +427,7 @@ function DrawingGlyph({
     );
   }
 
-  if (drawing.toolId === 'voltage-annotation') {
+  if (drawing.toolId === 'voltage-plus-annotation') {
     return (
       <Group
         x={drawing.x}
@@ -409,9 +456,42 @@ function DrawingGlyph({
             listening={false}
           />
         )}
-        <Line points={[-10, 0, -2, 0]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
-        <Line points={[-6, -4, -6, 4]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
-        <Line points={[2, 0, 10, 0]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
+        <Line points={[-4, 0, 4, 0]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
+        <Line points={[0, -4, 0, 4]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
+      </Group>
+    );
+  }
+
+  if (drawing.toolId === 'voltage-minus-annotation') {
+    return (
+      <Group
+        x={drawing.x}
+        y={drawing.y}
+        rotation={drawing.rotation}
+        draggable={draggable}
+        listening={listening}
+        opacity={opacity}
+        dragBoundFunc={dragBoundFunc}
+        onMouseDown={onMouseDown}
+        onDblClick={onDoubleClick}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
+        onDragEnd={onDragEnd}
+      >
+        <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
+        {isSelected && (
+          <Rect
+            x={-20}
+            y={-12}
+            width={40}
+            height={24}
+            stroke="#4f80ff"
+            strokeWidth={1}
+            dash={[4, 4]}
+            listening={false}
+          />
+        )}
+        <Line points={[-4, 0, 4, 0]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
       </Group>
     );
   }
@@ -459,18 +539,9 @@ function DrawingGlyph({
     );
   }
 
-  const glyphLabel: Partial<Record<Exclude<NonWireDrawingToolId, 'joint'>, string>> = {
-    label: 'LBL',
-    text: 'TXT',
-  };
-
-  const labelText =
-    drawing.toolId === 'label'
-      ? drawing.text?.trim() || 'Label'
-      : drawing.toolId === 'text'
-        ? drawing.text?.trim() || 'Text'
-        : undefined;
-  const labelMetrics = labelText ? measureLabelText(labelText) : null;
+  const labelText = getDrawingDisplayText(drawing);
+  const labelFontSize = getDrawingFontSize(drawing);
+  const labelMetrics = measureLabelText(labelText, labelFontSize);
   const labelBox = labelMetrics
     ? {
         width: Math.max(24, labelMetrics.width + LABEL_PADDING_X * 2),
@@ -479,7 +550,7 @@ function DrawingGlyph({
     : null;
   const labelBoxX = labelBox ? -labelBox.width / 2 : -18;
   const labelBoxY = labelBox ? -labelBox.height / 2 : -10;
-  const showFrame = drawing.toolId === 'label';
+  const showFrame = drawing.toolId === 'text' && drawing.border === true;
 
   return (
     <Group
@@ -526,23 +597,21 @@ function DrawingGlyph({
           strokeWidth={1.2}
         />
       )}
-      <Text
-        x={labelBox ? labelBoxX + LABEL_PADDING_X : -17}
-        y={labelBox ? labelBoxY + LABEL_PADDING_Y : -7}
-        width={labelBox ? labelBox.width - LABEL_PADDING_X * 2 : 34}
-        height={labelBox ? labelBox.height - LABEL_PADDING_Y * 2 : 14}
-        fontSize={LABEL_FONT_SIZE}
-        fontFamily={LABEL_FONT_FAMILY}
-        align="center"
-        verticalAlign="middle"
-        text={
-          labelText ??
-          glyphLabel[drawing.toolId as Exclude<NonWireDrawingToolId, 'joint'>] ??
-          ''
-        }
-        fill={strokeColor}
-        listening={false}
-      />
+      {!listening && (
+        <Text
+          x={labelBox ? labelBoxX + LABEL_PADDING_X : -17}
+          y={labelBox ? labelBoxY + LABEL_PADDING_Y : -7}
+          width={labelBox ? labelBox.width - LABEL_PADDING_X * 2 : 34}
+          height={labelBox ? labelBox.height - LABEL_PADDING_Y * 2 : 14}
+          fontSize={labelFontSize}
+          fontFamily={LABEL_FONT_FAMILY}
+          align="center"
+          verticalAlign="middle"
+          text={labelText}
+          fill={strokeColor}
+          listening={false}
+        />
+      )}
     </Group>
   );
 }
@@ -555,7 +624,7 @@ export default function CanvasViewport({
   onToggleGrid,
   onRegisterViewportControls,
 }: CanvasViewportProps) {
-  const [camera, setCamera] = useState<Camera>({ offsetX: 400, offsetY: 300, zoom: 1 });
+  const [camera, setCamera] = useState<Camera>({ offsetX: 400, offsetY: 300, zoom: ZOOM_BASELINE });
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
   const [cursor, setCursor] = useState('default');
   const [isPanning, setIsPanning] = useState(false);
@@ -616,6 +685,61 @@ export default function CanvasViewport({
   const selectedComponentSet = useMemo(() => new Set(selectedComponentIds), [selectedComponentIds]);
   const selectedDrawingSet = useMemo(() => new Set(selectedDrawingIds), [selectedDrawingIds]);
   const selectedWireSet = useMemo(() => new Set(selectedWireIds), [selectedWireIds]);
+  const textDrawings = useMemo(
+    () => drawings.filter((drawing) => drawing.toolId === 'text'),
+    [drawings]
+  );
+  const selectedCount =
+    selectedComponentIds.length + selectedDrawingIds.length + selectedWireIds.length;
+  const singleSelection = useMemo(() => {
+    if (selectedCount !== 1) {
+      return null;
+    }
+    if (selectedComponentIds.length === 1) {
+      return { kind: 'component' as const, id: selectedComponentIds[0] };
+    }
+    if (selectedDrawingIds.length === 1) {
+      return { kind: 'drawing' as const, id: selectedDrawingIds[0] };
+    }
+    if (selectedWireIds.length === 1) {
+      return { kind: 'wire' as const, id: selectedWireIds[0] };
+    }
+    return null;
+  }, [selectedComponentIds, selectedCount, selectedDrawingIds, selectedWireIds]);
+  const selectedStrokeColor = useMemo(() => {
+    if (!singleSelection) {
+      return DEFAULT_STROKE_COLOR;
+    }
+    if (singleSelection.kind === 'component') {
+      return (
+        components.find((item) => item.id === singleSelection.id)?.strokeColor ?? DEFAULT_STROKE_COLOR
+      );
+    }
+    if (singleSelection.kind === 'drawing') {
+      return (
+        drawings.find((item) => item.id === singleSelection.id)?.strokeColor ?? DEFAULT_STROKE_COLOR
+      );
+    }
+    return wires.find((item) => item.id === singleSelection.id)?.strokeColor ?? DEFAULT_STROKE_COLOR;
+  }, [components, drawings, singleSelection, wires]);
+  const selectedStrokeColorInput = useMemo(
+    () => normalizeColorForInput(selectedStrokeColor),
+    [selectedStrokeColor]
+  );
+  const selectedTextDrawing = useMemo(() => {
+    if (singleSelection?.kind !== 'drawing') {
+      return null;
+    }
+    const drawing = drawings.find((item) => item.id === singleSelection.id);
+    if (!drawing || drawing.toolId !== 'text') {
+      return null;
+    }
+    return drawing;
+  }, [drawings, singleSelection]);
+  const selectedTextFontSize = selectedTextDrawing
+    ? getDrawingFontSize(selectedTextDrawing)
+    : LABEL_FONT_SIZE;
+  const selectedTextBorder = selectedTextDrawing?.border === true;
 
   useEffect(() => {
     selectedComponentIdsRef.current = selectedComponentIds;
@@ -663,6 +787,109 @@ export default function CanvasViewport({
       });
     },
     []
+  );
+
+  const applySelectedStrokeColor = useCallback(
+    (strokeColor: string) => {
+      if (!singleSelection) {
+        return;
+      }
+      updateScene((prev) => {
+        if (singleSelection.kind === 'component') {
+          let changed = false;
+          const componentsNext = prev.components.map((component) => {
+            if (component.id !== singleSelection.id) {
+              return component;
+            }
+            if ((component.strokeColor ?? DEFAULT_STROKE_COLOR) === strokeColor) {
+              return component;
+            }
+            changed = true;
+            return { ...component, strokeColor };
+          });
+          return changed ? { ...prev, components: componentsNext } : prev;
+        }
+
+        if (singleSelection.kind === 'drawing') {
+          let changed = false;
+          const drawingsNext = prev.drawings.map((drawing) => {
+            if (drawing.id !== singleSelection.id) {
+              return drawing;
+            }
+            if ((drawing.strokeColor ?? DEFAULT_STROKE_COLOR) === strokeColor) {
+              return drawing;
+            }
+            changed = true;
+            return { ...drawing, strokeColor };
+          });
+          return changed ? { ...prev, drawings: drawingsNext } : prev;
+        }
+
+        let changed = false;
+        const wiresNext = prev.wires.map((wire) => {
+          if (wire.id !== singleSelection.id) {
+            return wire;
+          }
+          if ((wire.strokeColor ?? DEFAULT_STROKE_COLOR) === strokeColor) {
+            return wire;
+          }
+          changed = true;
+          return { ...wire, strokeColor };
+        });
+        return changed ? { ...prev, wires: wiresNext } : prev;
+      });
+    },
+    [singleSelection, updateScene]
+  );
+
+  const applySelectedTextBorder = useCallback(
+    (border: boolean) => {
+      if (!selectedTextDrawing) {
+        return;
+      }
+      updateScene((prev) => {
+        let changed = false;
+        const drawingsNext = prev.drawings.map((drawing) => {
+          if (drawing.id !== selectedTextDrawing.id || drawing.toolId !== 'text') {
+            return drawing;
+          }
+          if ((drawing.border ?? false) === border) {
+            return drawing;
+          }
+          changed = true;
+          return { ...drawing, border };
+        });
+        return changed ? { ...prev, drawings: drawingsNext } : prev;
+      });
+    },
+    [selectedTextDrawing, updateScene]
+  );
+
+  const nudgeSelectedTextFontSize = useCallback(
+    (delta: number) => {
+      if (!selectedTextDrawing) {
+        return;
+      }
+      const nextFontSize = Math.min(
+        MAX_TEXT_FONT_SIZE,
+        Math.max(MIN_TEXT_FONT_SIZE, getDrawingFontSize(selectedTextDrawing) + delta)
+      );
+      updateScene((prev) => {
+        let changed = false;
+        const drawingsNext = prev.drawings.map((drawing) => {
+          if (drawing.id !== selectedTextDrawing.id || drawing.toolId !== 'text') {
+            return drawing;
+          }
+          if (getDrawingFontSize(drawing) === nextFontSize) {
+            return drawing;
+          }
+          changed = true;
+          return { ...drawing, fontSize: nextFontSize };
+        });
+        return changed ? { ...prev, drawings: drawingsNext } : prev;
+      });
+    },
+    [selectedTextDrawing, updateScene]
   );
 
   const captureDragHistory = useCallback(() => {
@@ -903,16 +1130,15 @@ export default function CanvasViewport({
     [camera, interactionTriage, isPasteMode, selectedTool]
   );
 
-  const handleLabelDoubleClick = useCallback(
+  const handleTextDoubleClick = useCallback(
     (drawing: DrawingEntity) => {
       return (e: KonvaEventObject<MouseEvent>) => {
-        if (selectedTool || isPasteMode || (drawing.toolId !== 'label' && drawing.toolId !== 'text')) {
+        if (selectedTool || isPasteMode || drawing.toolId !== 'text') {
           return;
         }
         e.cancelBubble = true;
         const current = drawing.text ?? '';
-        const promptLabel = drawing.toolId === 'text' ? 'Edit text:' : 'Edit label text:';
-        const next = window.prompt(promptLabel, current);
+        const next = window.prompt('Edit text (use $...$ and LaTeX syntax for equations):', current);
         if (next === null || next === current) {
           return;
         }
@@ -987,6 +1213,7 @@ export default function CanvasViewport({
         x: component.x - anchor.x,
         y: component.y - anchor.y,
         rotation: component.rotation,
+        strokeColor: component.strokeColor,
       })),
       drawings: selectedDrawings.map((drawing) => ({
         toolId: drawing.toolId,
@@ -994,12 +1221,16 @@ export default function CanvasViewport({
         y: drawing.y - anchor.y,
         rotation: drawing.rotation,
         text: drawing.text,
+        strokeColor: drawing.strokeColor,
+        border: drawing.border,
+        fontSize: drawing.fontSize,
       })),
       wires: selectedWires.map((wire) => ({
         points: getAbsoluteWirePoints(wire).map((point) => ({
           x: point.x - anchor.x,
           y: point.y - anchor.y,
         })),
+        strokeColor: wire.strokeColor,
       })),
     });
     return true;
@@ -1242,6 +1473,7 @@ export default function CanvasViewport({
                 x: snapped.x,
                 y: snapped.y,
                 rotation: placementRotation,
+                strokeColor: DEFAULT_STROKE_COLOR,
               },
             ],
           }));
@@ -1265,12 +1497,7 @@ export default function CanvasViewport({
         }
 
         if (activeDrawingTool) {
-          const labelText =
-            activeDrawingTool === 'label'
-              ? 'Label'
-              : activeDrawingTool === 'text'
-                ? 'Text'
-                : undefined;
+          const defaultText = activeDrawingTool === 'text' ? 'Text' : undefined;
           updateScene((prev) => ({
             ...prev,
             drawings: [
@@ -1281,7 +1508,10 @@ export default function CanvasViewport({
                 x: snapped.x,
                 y: snapped.y,
                 rotation: placementRotation,
-                text: labelText,
+                text: defaultText,
+                strokeColor: DEFAULT_STROKE_COLOR,
+                border: false,
+                fontSize: LABEL_FONT_SIZE,
               },
             ],
           }));
@@ -1319,7 +1549,8 @@ export default function CanvasViewport({
                 wire.points.map((point) => ({
                   x: snapToGrid(point.x + snapped.x),
                   y: snapToGrid(point.y + snapped.y),
-                }))
+                })),
+                wire.strokeColor ?? DEFAULT_STROKE_COLOR
               )
             ),
           ],
@@ -1526,7 +1757,10 @@ export default function CanvasViewport({
           if (wireDraft && wireDraft.length >= 2) {
             updateScene((prev) => ({
               ...prev,
-              wires: [...prev.wires, makeWireFromAbsolutePoints(makeId('wire'), wireDraft)],
+              wires: [
+                ...prev.wires,
+                makeWireFromAbsolutePoints(makeId('wire'), wireDraft, DEFAULT_STROKE_COLOR),
+              ],
             }));
           }
           setWireDraft(null);
@@ -1678,6 +1912,7 @@ export default function CanvasViewport({
               x={component.x}
               y={component.y}
               rotation={component.rotation}
+              strokeColor={component.strokeColor ?? DEFAULT_STROKE_COLOR}
               isSelected={selectedComponentSet.has(component.id)}
               onMouseDown={handleEntityMouseDown('component', component.id)}
             />
@@ -1725,7 +1960,7 @@ export default function CanvasViewport({
                 >
                   <Line
                     points={relativePoints}
-                    stroke="black"
+                    stroke={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
                     strokeWidth={1}
                     lineJoin="round"
                     lineCap="round"
@@ -1756,9 +1991,10 @@ export default function CanvasViewport({
             <DrawingGlyph
               key={drawing.id}
               drawing={drawing}
+              strokeColor={drawing.strokeColor ?? DEFAULT_STROKE_COLOR}
               isSelected={selectedDrawingSet.has(drawing.id)}
               onMouseDown={handleEntityMouseDown('drawing', drawing.id)}
-              onDoubleClick={handleLabelDoubleClick(drawing)}
+              onDoubleClick={handleTextDoubleClick(drawing)}
             />
           ))}
 
@@ -1780,7 +2016,7 @@ export default function CanvasViewport({
           {wireDraft && wireDraft.length >= 2 && (
             <Line
               points={wireDraft.flatMap((point) => [point.x, point.y])}
-              stroke="black"
+              stroke={DEFAULT_STROKE_COLOR}
               strokeWidth={1}
               lineJoin="round"
               lineCap="round"
@@ -1840,6 +2076,46 @@ export default function CanvasViewport({
 
       </Stage>
 
+      <div className={styles.latexOverlay}>
+        {textDrawings.map((drawing) => {
+          const content = getDrawingDisplayText(drawing);
+          const isLatex = hasLatexSyntax(content);
+          const fontSize = getDrawingFontSize(drawing);
+          const metrics = measureLabelText(content, fontSize);
+          const boxWidth = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
+          const boxHeight = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+          const color = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
+          const showBorder = drawing.border === true;
+          return (
+            <div
+              key={`latex-${drawing.id}`}
+              className={styles.latexNode}
+              style={{
+                left: camera.offsetX + drawing.x * camera.zoom,
+                top: camera.offsetY + drawing.y * camera.zoom,
+                width: `${boxWidth}px`,
+                height: `${boxHeight}px`,
+                transform: `translate(-50%, -50%) rotate(${drawing.rotation}deg) scale(${camera.zoom})`,
+                color,
+                border: showBorder ? `1.2px solid ${color}` : 'none',
+              }}
+            >
+              <div
+                className={styles.latexContent}
+                style={{
+                  width: `${boxWidth - LABEL_PADDING_X * 2}px`,
+                  height: `${boxHeight - LABEL_PADDING_Y * 2}px`,
+                  fontFamily: isLatex ? undefined : LABEL_FONT_FAMILY,
+                  fontSize: `${fontSize}px`,
+                }}
+              >
+                {isLatex ? <Latex>{content}</Latex> : content}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {selectionRect.visible && (
         <Stage
           width={stageSize.width}
@@ -1863,11 +2139,71 @@ export default function CanvasViewport({
       )}
 
       <div className={styles.hud}>
-        <div>Zoom: {(camera.zoom * 100).toFixed(0)}%</div>
+        <div>Zoom: {((camera.zoom / ZOOM_BASELINE) * 100).toFixed(0)}%</div>
         <div>
           Position: ({mouseWorldPos.x.toFixed(0)}, {mouseWorldPos.y.toFixed(0)})
         </div>
       </div>
+
+      {singleSelection && !selectedTool && !isPasteMode && (
+        <div className={styles.bottomEditorBar}>
+          <span className={styles.editorLabel}>Color</span>
+          <div className={styles.paletteRow}>
+            {QUICK_COLOR_PALETTE.map((color) => (
+              <button
+                key={color}
+                type="button"
+                className={`${styles.colorSwatch} ${selectedStrokeColorInput.toLowerCase() === color.toLowerCase() ? styles.colorSwatchActive : ''}`}
+                style={{ backgroundColor: color }}
+                onClick={() => applySelectedStrokeColor(color)}
+                aria-label={`Set color ${color}`}
+                title={color}
+              />
+            ))}
+          </div>
+          <label className={styles.pickerLabel}>
+            Picker
+            <input
+              type="color"
+              value={selectedStrokeColorInput}
+              className={styles.colorPicker}
+              onChange={(event) => applySelectedStrokeColor(event.target.value)}
+              aria-label="Pick custom color"
+            />
+          </label>
+          {selectedTextDrawing && (
+            <>
+              <label className={styles.toggleLabel}>
+                Border
+                <input
+                  type="checkbox"
+                  checked={selectedTextBorder}
+                  onChange={(event) => applySelectedTextBorder(event.target.checked)}
+                />
+              </label>
+              <div className={styles.fontControls}>
+                <button
+                  type="button"
+                  className={styles.fontButton}
+                  onClick={() => nudgeSelectedTextFontSize(-1)}
+                  aria-label="Decrease font size"
+                >
+                  -
+                </button>
+                <span className={styles.fontSizeReadout}>{selectedTextFontSize}px</span>
+                <button
+                  type="button"
+                  className={styles.fontButton}
+                  onClick={() => nudgeSelectedTextFontSize(1)}
+                  aria-label="Increase font size"
+                >
+                  +
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

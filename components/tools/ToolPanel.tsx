@@ -10,6 +10,9 @@ import {
 import styles from './ToolPanel.module.css';
 
 const LONG_PRESS_MS = 450;
+const SUBMENU_WIDTH = 240;
+const SUBMENU_GAP = 8;
+const VIEWPORT_MARGIN = 8;
 
 interface ToolPanelProps {
   title: string;
@@ -105,7 +108,16 @@ export default function ToolPanel({
           const buttonRect = event.currentTarget.getBoundingClientRect();
           longPressTimerRef.current = window.setTimeout(() => {
             suppressClickToolRef.current = tool.id;
-            setSubmenuPosition({ left: buttonRect.right + 8, top: buttonRect.top });
+            const estimatedSubmenuHeight = submenuToolIds.length * 44 + 16;
+            const preferredLeft =
+              side === 'right'
+                ? buttonRect.left - SUBMENU_GAP - SUBMENU_WIDTH
+                : buttonRect.right + SUBMENU_GAP;
+            const maxLeft = window.innerWidth - SUBMENU_WIDTH - VIEWPORT_MARGIN;
+            const clampedLeft = Math.min(Math.max(preferredLeft, VIEWPORT_MARGIN), maxLeft);
+            const maxTop = window.innerHeight - estimatedSubmenuHeight - VIEWPORT_MARGIN;
+            const clampedTop = Math.min(Math.max(buttonRect.top, VIEWPORT_MARGIN), maxTop);
+            setSubmenuPosition({ left: clampedLeft, top: clampedTop });
             setOpenSubmenuTool(tool.id);
           }, LONG_PRESS_MS);
         };

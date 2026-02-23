@@ -11,6 +11,7 @@ export interface ComponentEntity {
   x: number;
   y: number;
   rotation: Rotation;
+  strokeColor?: string;
 }
 
 export interface DrawingEntity {
@@ -20,6 +21,9 @@ export interface DrawingEntity {
   y: number;
   rotation: Rotation;
   text?: string;
+  strokeColor?: string;
+  border?: boolean;
+  fontSize?: number;
 }
 
 export interface WireEntity {
@@ -27,6 +31,7 @@ export interface WireEntity {
   x: number;
   y: number;
   vertices: Point[];
+  strokeColor?: string;
 }
 
 export interface SceneData {
@@ -45,5 +50,5 @@ export interface CanvasFile {
 export interface ClipboardData {
   components: Omit<ComponentEntity, 'id'>[];
   drawings: Omit<DrawingEntity, 'id'>[];
-  wires: Array<{ points: Point[] }>;
+  wires: Array<{ points: Point[]; strokeColor?: string }>;
 }

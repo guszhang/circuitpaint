@@ -18,6 +18,7 @@ const isNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
 const isString = (value: unknown): value is string => typeof value === 'string';
+const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
 
 const isRotation = (value: unknown): value is 0 | 90 | 180 | 270 =>
   value === 0 || value === 90 || value === 180 || value === 270;
@@ -54,12 +55,16 @@ function parseCanvasFile(raw: unknown): CanvasFile {
     if (!isComponentTool(item.toolId)) {
       throw new Error('Unknown component tool.');
     }
+    if (item.strokeColor !== undefined && !isString(item.strokeColor)) {
+      throw new Error('Invalid component color.');
+    }
     return {
       id: item.id,
       toolId: item.toolId,
       x: item.x,
       y: item.y,
       rotation: item.rotation,
+      strokeColor: item.strokeColor,
     };
   });
 
@@ -71,19 +76,38 @@ function parseCanvasFile(raw: unknown): CanvasFile {
     if (!isString(item.id) || !isString(item.toolId) || !isNumber(item.x) || !isNumber(item.y) || !isRotation(item.rotation)) {
       throw new Error('Invalid drawing entry.');
     }
-    if (!isDrawingTool(item.toolId) || item.toolId === 'wire') {
+    const normalizedToolId =
+      item.toolId === 'voltage-annotation'
+        ? 'voltage-plus-annotation'
+        : item.toolId === 'label'
+          ? 'text'
+          : item.toolId;
+    if (!isDrawingTool(normalizedToolId) || normalizedToolId === 'wire') {
       throw new Error('Unknown drawing tool.');
     }
     if (item.text !== undefined && !isString(item.text)) {
       throw new Error('Invalid drawing text.');
     }
+    if (item.strokeColor !== undefined && !isString(item.strokeColor)) {
+      throw new Error('Invalid drawing color.');
+    }
+    if (item.border !== undefined && !isBoolean(item.border)) {
+      throw new Error('Invalid drawing border value.');
+    }
+    if (item.fontSize !== undefined && !isNumber(item.fontSize)) {
+      throw new Error('Invalid drawing font size.');
+    }
+    const normalizedBorder = item.toolId === 'label' ? true : item.border;
     return {
       id: item.id,
-      toolId: item.toolId,
+      toolId: normalizedToolId,
       x: item.x,
       y: item.y,
       rotation: item.rotation,
       text: item.text,
+      strokeColor: item.strokeColor,
+      border: normalizedBorder,
+      fontSize: item.fontSize,
     };
   });
 
@@ -101,11 +125,15 @@ function parseCanvasFile(raw: unknown): CanvasFile {
       }
       return { x: vertex.x, y: vertex.y };
     });
+    if (item.strokeColor !== undefined && !isString(item.strokeColor)) {
+      throw new Error('Invalid wire color.');
+    }
     return {
       id: item.id,
       x: item.x,
       y: item.y,
       vertices,
+      strokeColor: item.strokeColor,
     };
   });
 
@@ -155,7 +183,7 @@ export default function Home() {
   }, []);
 
   const handleZoomTo100 = useCallback(() => {
-    viewportControlsRef.current?.setZoomLevel(1);
+    viewportControlsRef.current?.setZoomLevel(2);
   }, []);
 
   const handleEditUndo = useCallback(() => {

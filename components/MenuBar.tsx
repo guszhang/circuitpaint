@@ -38,7 +38,6 @@ export default function MenuBar({
 
   const menus: Record<string, MenuItem[]> = {
     File: [
-      'New',
       { label: 'Open', onSelect: onFileOpen },
       { label: 'Save', onSelect: onFileSave },
     ],
@@ -91,6 +90,7 @@ export default function MenuBar({
 
   return (
     <div className={styles.menuBar} ref={menuBarRef}>
+      <div className={styles.menuCenterTitle}>CircuitPaint version 0.1</div>
       {Object.entries(menus).map(([menuName, items]) => (
         <div key={menuName} className={styles.menuContainer}>
           <div

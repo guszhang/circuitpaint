@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Group, Line, Rect } from 'react-konva';
+import { Circle, Group, Line, Rect } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
 type SymbolRotation = 0 | 90 | 180 | 270;
 
-interface IcSymbolProps {
+interface NotGateSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
@@ -22,7 +22,7 @@ interface IcSymbolProps {
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }
 
-export default function IcSymbol({
+export default function NotGateSymbol({
   x,
   y,
   rotation,
@@ -36,7 +36,7 @@ export default function IcSymbol({
   onDragStart,
   onDragMove,
   onDragEnd,
-}: IcSymbolProps) {
+}: NotGateSymbolProps) {
   const lineColor = strokeColor ?? 'black';
 
   return (
@@ -53,16 +53,7 @@ export default function IcSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect
-        x={-26}
-        y={-12}
-        width={52}
-        height={24}
-        fill="black"
-        opacity={0}
-        strokeWidth={0}
-        listening={true}
-      />
+      <Rect x={-26} y={-12} width={52} height={24} fill="black" opacity={0} strokeWidth={0} listening={true} />
       {isSelected && (
         <Rect
           x={-26}
@@ -77,8 +68,9 @@ export default function IcSymbol({
         />
       )}
       <Line points={[-6, -8, -6, 8, 8, 0, -6, -8]} stroke={lineColor} strokeWidth={2} lineJoin="round" />
-      <Line points={[-20, 0, -6, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[8, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Circle x={10} y={0} radius={2} stroke={lineColor} strokeWidth={2} fill="white" />
+      <Line points={[-20, 0, -6, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
     </Group>
   );
 }

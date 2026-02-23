@@ -9,11 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "katex": "^0.16.33",
     "konva": "^9.3.6",
     "next": "^15.5.12",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-konva": "^19.2.2"
+    "react-konva": "^19.2.2",
+    "react-latex-next": "^3.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",

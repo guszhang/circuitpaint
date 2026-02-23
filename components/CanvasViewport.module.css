@@ -12,6 +12,29 @@
   pointer-events: none;
 }
 
+.latexOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.latexNode {
+  position: absolute;
+  transform-origin: center center;
+}
+
+.latexContent {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .hud {
   position: absolute;
   bottom: 8px;
@@ -28,4 +51,95 @@
 
 .hud > div {
   margin: 2px 0;
+}
+
+.bottomEditorBar {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background-color: rgba(245, 249, 255, 0.96);
+  border: 1px solid #bfd2ee;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(33, 55, 90, 0.12);
+}
+
+.editorLabel {
+  color: #2a3b57;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.paletteRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.colorSwatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #9bb4d9;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.colorSwatchActive {
+  outline: 2px solid #4f80ff;
+  outline-offset: 1px;
+}
+
+.pickerLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #2a3b57;
+  font-size: 12px;
+}
+
+.colorPicker {
+  width: 26px;
+  height: 22px;
+  border: 1px solid #9bb4d9;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toggleLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #2a3b57;
+  font-size: 12px;
+}
+
+.fontControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fontButton {
+  width: 22px;
+  height: 22px;
+  border: 1px solid #9bb4d9;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #2a3b57;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.fontSizeReadout {
+  min-width: 34px;
+  text-align: center;
+  color: #2a3b57;
+  font-size: 12px;
 }

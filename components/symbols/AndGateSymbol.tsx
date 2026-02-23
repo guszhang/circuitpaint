@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Group, Line, Rect } from 'react-konva';
+import { Group, Line, Rect, Shape } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
 type SymbolRotation = 0 | 90 | 180 | 270;
 
-interface IcSymbolProps {
+interface AndGateSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
@@ -22,7 +22,7 @@ interface IcSymbolProps {
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }
 
-export default function IcSymbol({
+export default function AndGateSymbol({
   x,
   y,
   rotation,
@@ -36,7 +36,7 @@ export default function IcSymbol({
   onDragStart,
   onDragMove,
   onDragEnd,
-}: IcSymbolProps) {
+}: AndGateSymbolProps) {
   const lineColor = strokeColor ?? 'black';
 
   return (
@@ -53,16 +53,7 @@ export default function IcSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect
-        x={-26}
-        y={-12}
-        width={52}
-        height={24}
-        fill="black"
-        opacity={0}
-        strokeWidth={0}
-        listening={true}
-      />
+      <Rect x={-26} y={-12} width={52} height={24} fill="black" opacity={0} strokeWidth={0} listening={true} />
       {isSelected && (
         <Rect
           x={-26}
@@ -76,9 +67,23 @@ export default function IcSymbol({
           listening={false}
         />
       )}
-      <Line points={[-6, -8, -6, 8, 8, 0, -6, -8]} stroke={lineColor} strokeWidth={2} lineJoin="round" />
-      <Line points={[-20, 0, -6, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[8, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Shape
+        sceneFunc={(ctx, shape) => {
+          ctx.beginPath();
+          ctx.moveTo(-8, -8);
+          ctx.lineTo(0, -8);
+          ctx.quadraticCurveTo(8, -8, 8, 0);
+          ctx.quadraticCurveTo(8, 8, 0, 8);
+          ctx.lineTo(-8, 8);
+          ctx.closePath();
+          ctx.strokeShape(shape);
+        }}
+        stroke={lineColor}
+        strokeWidth={2}
+      />
+      <Line points={[-20, -4, -8, -4]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[-20, 4, -8, 4]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[8, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
     </Group>
   );
 }

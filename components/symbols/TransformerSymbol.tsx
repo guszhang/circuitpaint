@@ -54,13 +54,13 @@ export default function TransformerSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-26} y={-14} width={52} height={28} fill="black" opacity={0} strokeWidth={0} listening={true} />
+      <Rect x={-26} y={-26} width={52} height={52} fill="black" opacity={0} strokeWidth={0} listening={true} />
       {isSelected && (
         <Rect
           x={-26}
-          y={-14}
+          y={-26}
           width={52}
-          height={28}
+          height={52}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}

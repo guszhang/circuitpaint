@@ -1,4 +1,5 @@
 .menuBar {
+  position: relative;
   display: flex;
   background: linear-gradient(180deg, #f7fbff 0%, #e5efff 100%);
   color: #21375a;
@@ -6,6 +7,18 @@
   align-items: center;
   padding: 0 8px;
   border-bottom: 1px solid #bed1ec;
+}
+
+.menuCenterTitle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: #2a3b57;
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .menuContainer {
