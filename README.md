@@ -1,106 +1,78 @@
 # CircuitPaint
 
-A fast circuit drawing software with SVG export functions built with Next.js and Konva.js.
+CircuitPaint is a lightweight circuit sketching playground built with the Next.js App Router and Konva. It focuses on fast interactions, consistent styling, and a workflow that is easy to extend with new symbols or tools. The public deployment will live at [https://www.circuitpaint.org](https://www.circuitpaint.org).
 
-## Features
+## Highlights
 
-### User Interface
-- **Top Menu Bar**: File, Edit, Draw, Tool, and Help menus with dropdown options
-- **Left Toolbar**: Component library (Resistor, Capacitor, Inductor, Diode, Switch, IC, Ground, Source)
-- **Right Toolbar**: Wiring and annotation tools (Wire, Bus, Label, Text, Note)
-- **Canvas**: Interactive Konva.js drawing surface with blue dot-matrix grid
-
-### Canvas Interactions
-- **Zoom**: Use mouse wheel to zoom in/out with discrete levels [0.5x, 0.75x, 1x, 1.5x, 2x, 3x, 4x]
-  - Zoom is centered around the mouse cursor position
-- **Pan**: Right-click and drag to pan the canvas
-- **Context Menu**: Right-click on canvas to open context menu (without dragging)
-- **HUD Display**: Bottom-left overlay shows current zoom level and world coordinates
-
-### Technical Features
-- Built with Next.js 14 (App Router) and TypeScript
-- Konva.js for high-performance canvas rendering
-- CSS Modules for component styling
-- No text selection for professional UI feel
-- Efficient grid rendering (only visible dots are rendered)
-- Clean separation of UI and canvas components
+- **Two-toolbar layout** – Components (resistors, capacitors, inductors, diodes, ICs, etc.) live on the left, while routing and annotation tools (wires, buses, text, notes) sit on the right for quick access.
+- **Konva-powered canvas** – Smooth pan/zoom, a performant grid, contextual HUD, and a context menu for clipboard or scene-level actions.
+- **Modern React stack** – Next.js 15, React 19, TypeScript, CSS Modules, and a custom KaTeX renderer for inline math/labels without relying on third‑party React 18 packages.
+- **Export-friendly scene model** – The canvas state is serialized/deserialized through `CanvasViewport`, making it straightforward to add SVG export or custom persistence later.
+- **Polished details** – Global `user-select: none`, dedicated diode-based favicon, and shared geometry/zoom helpers keep the UI cohesive.
 
 ## Getting Started
 
-### Prerequisites
-- Node.js 18+ and npm
+### Requirements
 
-### Installation
+- Node.js **18.18+** or **20+** (matching Next.js 15 engine requirements)
+- npm (ships with Node) or another compatible package manager
 
-```bash
-# Install dependencies
-npm install
-```
-
-### Development
+### Installation & Scripts
 
 ```bash
-# Run development server
-npm run dev
+npm install          # install dependencies
+npm run dev          # start the dev server at http://localhost:3000
+npm run build        # create an optimized production build
+npm start            # serve the production build
+npm run lint         # run Next.js lint (will prompt to set up ESLint if not configured)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### Build
-
-```bash
-# Build for production
-npm run build
-
-# Start production server
-npm start
-```
-
-## Project Structure
+## Project Layout
 
 ```
-circuitpaint/
-├── app/                    # Next.js App Router pages
-│   ├── layout.tsx         # Root layout with metadata
-│   └── page.tsx           # Main application page
-├── components/            # React components
-│   ├── MenuBar.tsx        # Top menu bar with dropdowns
-│   ├── LeftToolbar.tsx    # Component library toolbar
-│   ├── RightToolbar.tsx   # Wiring/annotation toolbar
-│   ├── CanvasViewport.tsx # Konva canvas with grid and interactions
-│   └── ContextMenu.tsx    # Right-click context menu
-├── lib/                   # Utility functions
-│   ├── geometry.ts        # Coordinate transformation utilities
-│   └── zoom.ts            # Zoom level management
-├── styles/                # Global and module styles
-│   └── globals.css        # Global CSS with user-select: none
-├── package.json           # Dependencies and scripts
-├── next.config.js         # Next.js configuration
-└── tsconfig.json          # TypeScript configuration
+app/
+  layout.tsx        Root layout + global metadata
+  page.tsx          Main CircuitPaint UI
+  icon.png          Light-blue diode favicon
+components/
+  CanvasViewport.tsx  Konva stage, grid, tools, serialization
+  LeftToolbar.tsx      Component palette
+  RightToolbar.tsx     Wiring/annotation palette
+  MenuBar.tsx          Top menubar + dropdowns
+  ContextMenu.tsx      Canvas context menu
+  Latex.tsx            KaTeX renderer used for text entities
+  symbols/             Individual SVG/Konva component icons
+lib/
+  geometry.ts        Coordinate helpers (screen ↔ world)
+  tools.ts           Tool definitions & type guards
+  zoom.ts            Discrete zoom levels + helpers
+styles/globals.css   Global look-and-feel
 ```
 
-## Usage
+## Canvas & Tooling Cheatsheet
 
-### Canvas Controls
-- **Mouse Wheel**: Zoom in/out around cursor
-- **Right-Click + Drag**: Pan the canvas
-- **Right-Click**: Open context menu (without dragging)
-- **Left-Click on Tools**: Select component or wiring tool
-
-### Menu Bar
-- **File**: New, Open, Save, Save As, Export, Exit
-- **Edit**: Undo, Redo, Cut, Copy, Paste, Delete
-- **Draw**: Line, Rectangle, Circle, Text
-- **Tool**: Select, Wire, Component, Label
-- **Help**: Documentation, About
+- **Mouse wheel** – Discrete zoom steps centered on cursor (0.5× … 4×)
+- **Right-click + drag** – Pan the stage
+- **Right-click (tap-and-release)** – Context menu (copy/paste, grid toggle, etc.)
+- **Toolbar click** – Pick drawing/component tools; active tool highlights in each toolbar
+- **HUD** – Lower-left overlay shows zoom factor and world coordinates for quick reference
 
 ## Technology Stack
 
-- **Next.js 14**: React framework with App Router
-- **TypeScript**: Type-safe JavaScript
-- **Konva.js**: HTML5 canvas library via react-konva
-- **CSS Modules**: Scoped component styling
+- **Next.js 15 / React 19** with the App Router
+- **TypeScript** for type safety across geometry, tools, and Konva bindings
+- **Konva / react-konva** for canvas rendering
+- **KaTeX** via a bespoke React component for inline or block math labels
+- **CSS Modules** for scoped component styles
+
+## Contributing
+
+Issues and pull requests are welcome. The codebase is intentionally modular—new symbols or tools should live under `components/` with supporting logic in `lib/`. If you add linting via the ESLint CLI, update `package.json`/`README.md` accordingly so `npm run lint` no longer prompts for configuration.
 
 ## License
 
-GNU Affero General Public License version 3
+GNU Affero General Public License v3
+
+## Author
+
+- Gus Cheng Zhang, The University of Manchester, UK (2026)

@@ -161,7 +161,18 @@ export default function MenuBar({
             <div className={styles.helpSectionTitle}>Project Information</div>
 
             <div className={styles.helpMeta}>
-              <span>Software Author:</span> Dr Cheng (Gus) Zhang
+              <span>Project Repository:</span>{' '}
+              <a
+                href="https://github.com/guszhang/circuitpaint"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                CircuitPaint Repository
+              </a>
+            </div>
+
+            <div className={styles.helpMeta}>
+              <span>Software Author:</span> Cheng (Gus) Zhang
             </div>
 
             <div className={styles.helpMeta}>
@@ -183,7 +194,7 @@ export default function MenuBar({
             </div>
 
             <div className={styles.helpMeta}>
-              <span>Copyright:</span> © {new Date().getFullYear()} Dr Cheng (Gus) Zhang.
+              <span>Copyright:</span> © {new Date().getFullYear()} Cheng (Gus) Zhang.
               All rights reserved. Distributed under the terms of the AGPL-3.0 licence.
             </div>
           </div>

@@ -55,9 +55,9 @@ export default function IcSymbol({
     >
       <Rect
         x={-26}
-        y={-12}
+        y={-26}
         width={52}
-        height={24}
+        height={52}
         fill="black"
         opacity={0}
         strokeWidth={0}
@@ -66,9 +66,9 @@ export default function IcSymbol({
       {isSelected && (
         <Rect
           x={-26}
-          y={-12}
+          y={-26}
           width={52}
-          height={24}
+          height={52}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}
@@ -76,9 +76,9 @@ export default function IcSymbol({
           listening={false}
         />
       )}
-      <Line points={[-6, -8, -6, 8, 8, 0, -6, -8]} stroke={lineColor} strokeWidth={2} lineJoin="round" />
-      <Line points={[-20, 0, -6, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
-      <Line points={[8, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-16, -16, -16, 16, 12, 0, -16, -16]} stroke={lineColor} strokeWidth={2} lineJoin="round" lineCap='round' />
+      <Line points={[-20, 0, -16, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
     </Group>
   );
 }

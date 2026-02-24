@@ -53,13 +53,13 @@ export default function NotGateSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-26} y={-12} width={52} height={24} fill="black" opacity={0} strokeWidth={0} listening={true} />
+      <Rect x={-26} y={-26} width={52} height={52} fill="black" opacity={0} strokeWidth={0} listening={true} />
       {isSelected && (
         <Rect
           x={-26}
-          y={-12}
+          y={-26}
           width={52}
-          height={24}
+          height={52}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}
@@ -67,10 +67,10 @@ export default function NotGateSymbol({
           listening={false}
         />
       )}
-      <Line points={[-6, -8, -6, 8, 8, 0, -6, -8]} stroke={lineColor} strokeWidth={2} lineJoin="round" />
-      <Circle x={10} y={0} radius={2} stroke={lineColor} strokeWidth={2} fill="white" />
-      <Line points={[-20, 0, -6, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
-      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[-16, -16, -16, 16, 12, 0, -16, -16]} stroke={lineColor} strokeWidth={2} lineJoin="round" lineCap='round' />
+      <Line points={[-20, 0, -16, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Circle x={14} y={0} radius={2} stroke={lineColor} strokeWidth={2} fill="white" />
     </Group>
   );
 }

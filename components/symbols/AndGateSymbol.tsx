@@ -53,13 +53,13 @@ export default function AndGateSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-26} y={-12} width={52} height={24} fill="black" opacity={0} strokeWidth={0} listening={true} />
+      <Rect x={-26} y={-26} width={52} height={52} fill="black" opacity={0} strokeWidth={0} listening={true} />
       {isSelected && (
         <Rect
           x={-26}
-          y={-12}
+          y={-26}
           width={52}
-          height={24}
+          height={52}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}
@@ -70,20 +70,24 @@ export default function AndGateSymbol({
       <Shape
         sceneFunc={(ctx, shape) => {
           ctx.beginPath();
-          ctx.moveTo(-8, -8);
-          ctx.lineTo(0, -8);
-          ctx.quadraticCurveTo(8, -8, 8, 0);
-          ctx.quadraticCurveTo(8, 8, 0, 8);
-          ctx.lineTo(-8, 8);
+          ctx.moveTo(-16, -16);
+          ctx.lineTo(-4, -16);
+          // Top-right quarter circle
+          ctx.arc(-4, 0, 16, -Math.PI / 2, 0, false);
+          // Bottom-right quarter circle
+          ctx.arc(-4, 0, 16, 0, Math.PI / 2, false);
+          ctx.lineTo(-16, 16);
           ctx.closePath();
           ctx.strokeShape(shape);
         }}
         stroke={lineColor}
         strokeWidth={2}
+        lineJoin="round"
+        lineCap="round"
       />
-      <Line points={[-20, -4, -8, -4]} stroke={lineColor} strokeWidth={1} lineCap="round" />
-      <Line points={[-20, 4, -8, 4]} stroke={lineColor} strokeWidth={1} lineCap="round" />
-      <Line points={[8, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[-20, -10, -16, -10]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[-20, 10, -16, 10]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
     </Group>
   );
 }

@@ -53,13 +53,13 @@ export default function OpAmpSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-26} y={-12} width={52} height={24} fill="black" opacity={0} strokeWidth={0} listening={true} />
+      <Rect x={-26} y={-26} width={52} height={52} fill="black" opacity={0} strokeWidth={0} listening={true} />
       {isSelected && (
         <Rect
           x={-26}
-          y={-12}
+          y={-26}
           width={52}
-          height={24}
+          height={52}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}
@@ -67,13 +67,13 @@ export default function OpAmpSymbol({
           listening={false}
         />
       )}
-      <Line points={[-6, -8, -6, 8, 8, 0, -6, -8]} stroke={lineColor} strokeWidth={2} lineJoin="round" />
-      <Line points={[-20, -4, -6, -4]} stroke={lineColor} strokeWidth={1} lineCap="round" />
-      <Line points={[-20, 4, -6, 4]} stroke={lineColor} strokeWidth={1} lineCap="round" />
-      <Line points={[8, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
-      <Line points={[-13, -4, -9, -4]} stroke={lineColor} strokeWidth={1.5} lineCap="round" />
-      <Line points={[-11, -6, -11, -2]} stroke={lineColor} strokeWidth={1.5} lineCap="round" />
-      <Line points={[-13, 4, -9, 4]} stroke={lineColor} strokeWidth={1.5} lineCap="round" />
+      <Line points={[-16, -16, -16, 16, 12, 0, -16, -16]} stroke={lineColor} strokeWidth={2} lineJoin="round" lineCap='round' />
+      <Line points={[-20, -10, -16, -10]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-20, 10, -16, 10]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />    
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
+      <Line points={[-13, -9, -9, -9]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[-11, -11, -11, -7]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[-13, 9, -9, 9]} stroke={lineColor} strokeWidth={1} lineCap="round" />
     </Group>
   );
 }

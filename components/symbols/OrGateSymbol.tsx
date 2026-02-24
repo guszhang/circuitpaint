@@ -53,13 +53,13 @@ export default function OrGateSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-26} y={-12} width={52} height={24} fill="black" opacity={0} strokeWidth={0} listening={true} />
+      <Rect x={-26} y={-26} width={52} height={52} fill="black" opacity={0} strokeWidth={0} listening={true} />
       {isSelected && (
         <Rect
           x={-26}
-          y={-12}
+          y={-26}
           width={52}
-          height={24}
+          height={52}
           stroke="#4f80ff"
           strokeWidth={1}
           dash={[4, 4]}
@@ -70,18 +70,20 @@ export default function OrGateSymbol({
       <Shape
         sceneFunc={(ctx, shape) => {
           ctx.beginPath();
-          ctx.moveTo(-10, -8);
-          ctx.quadraticCurveTo(1, -8, 8, 0);
-          ctx.quadraticCurveTo(1, 8, -10, 8);
-          ctx.quadraticCurveTo(-5, 0, -10, -8);
+          ctx.moveTo(-16, -16);
+          ctx.quadraticCurveTo(4, -16, 12, 0);
+          ctx.quadraticCurveTo(4, 16, -16, 16);
+          ctx.quadraticCurveTo(-10, 0, -16, -16);
           ctx.strokeShape(shape);
         }}
         stroke={lineColor}
         strokeWidth={2}
+        lineJoin="round"
+        lineCap="round"
       />
-      <Line points={[-20, -4, -8, -4]} stroke={lineColor} strokeWidth={1} lineCap="round" />
-      <Line points={[-20, 4, -8, 4]} stroke={lineColor} strokeWidth={1} lineCap="round" />
-      <Line points={[8, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[-20, -10, -14, -10]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[-20, 10, -14, 10]} stroke={lineColor} strokeWidth={1} lineCap="round" />
+      <Line points={[12, 0, 20, 0]} stroke={lineColor} strokeWidth={1} lineCap="round" />
     </Group>
   );
 }
