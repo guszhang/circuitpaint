@@ -138,7 +138,7 @@ export default function MenuBar({
               CircuitPaint is a lightweight schematic drawing tool developed to provide
               clean, consistent, and publication-quality circuit symbols. <br />
 
-              <b>This tool is designed for Desktop use only for now. A mouse and keyboard are required for full functionality.</b>
+              <b>This tool is designed for Desktop use only for now. A mouse and a keyboard are required for full functionality.</b>
             </div>
             <div className={styles.helpSectionTitle}>Quick Commands</div>
             <ul className={styles.helpList}>
