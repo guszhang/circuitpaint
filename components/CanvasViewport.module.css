@@ -68,6 +68,57 @@
   box-shadow: 0 4px 14px rgba(33, 55, 90, 0.12);
 }
 
+.menuGroup {
+  position: relative;
+}
+
+.menuButton {
+  height: 24px;
+  border: 1px solid #9bb4d9;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #2a3b57;
+  padding: 0 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.upwardMenu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 120px;
+  background: #ffffff;
+  border: 1px solid #bfd2ee;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(33, 55, 90, 0.16);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 10;
+}
+
+.menuItemButton {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #2a3b57;
+  text-align: left;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.menuItemButton:hover {
+  background: #f1f6ff;
+}
+
+.menuItemButtonActive {
+  border-color: #6f96d8;
+  background: #e9f1ff;
+}
+
 .editorLabel {
   color: #2a3b57;
   font-size: 12px;

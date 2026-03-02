@@ -34,6 +34,7 @@ const TOOL_GROUP_CONFIG = {
   ],
   drawing: [
     { id: 'joint', label: 'Joint' },
+    { id: 'port', label: 'Port' },
     { id: 'wire', label: 'Wire' },
     { id: 'text', label: 'Text' },
     { id: 'voltage-plus-annotation', label: 'Voltage +' },

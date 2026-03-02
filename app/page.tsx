@@ -19,6 +19,8 @@ const isNumber = (value: unknown): value is number =>
 
 const isString = (value: unknown): value is string => typeof value === 'string';
 const isBoolean = (value: unknown): value is boolean => typeof value === 'boolean';
+const isNumberArray = (value: unknown): value is number[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'number' && Number.isFinite(item));
 
 const isRotation = (value: unknown): value is 0 | 90 | 180 | 270 =>
   value === 0 || value === 90 || value === 180 || value === 270;
@@ -128,12 +130,20 @@ function parseCanvasFile(raw: unknown): CanvasFile {
     if (item.strokeColor !== undefined && !isString(item.strokeColor)) {
       throw new Error('Invalid wire color.');
     }
+    if (item.strokeWidth !== undefined && !isNumber(item.strokeWidth)) {
+      throw new Error('Invalid wire thickness.');
+    }
+    if (item.dash !== undefined && !isNumberArray(item.dash)) {
+      throw new Error('Invalid wire dash pattern.');
+    }
     return {
       id: item.id,
       x: item.x,
       y: item.y,
       vertices,
       strokeColor: item.strokeColor,
+      strokeWidth: item.strokeWidth,
+      dash: item.dash,
     };
   });
 
@@ -326,16 +336,23 @@ export default function Home() {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 's') {
-        return;
-      }
       const target = event.target as HTMLElement | null;
       const tagName = target?.tagName;
       if (tagName === 'INPUT' || tagName === 'TEXTAREA' || target?.isContentEditable) {
         return;
       }
-      event.preventDefault();
-      handleQuickSaveDownload();
+      const key = event.key.toLowerCase();
+
+      if ((event.ctrlKey || event.metaKey) && key === 's') {
+        event.preventDefault();
+        handleQuickSaveDownload();
+        return;
+      }
+
+      if (!event.ctrlKey && !event.metaKey && !event.altKey && key === 'w') {
+        event.preventDefault();
+        setSelectedTool('wire');
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);

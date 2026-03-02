@@ -122,6 +122,14 @@
   margin-top: 2px;
 }
 
+.helpSectionTitle2 {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #3b5268;
+  margin-top: 2px;
+}
+
 .helpList {
   margin: 0;
   padding-left: 18px;

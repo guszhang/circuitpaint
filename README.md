@@ -1,78 +1,120 @@
 # CircuitPaint
 
-CircuitPaint is a lightweight circuit sketching playground built with the Next.js App Router and Konva. It focuses on fast interactions, consistent styling, and a workflow that is easy to extend with new symbols or tools. The public deployment will live at [https://www.circuitpaint.org](https://www.circuitpaint.org).
+CircuitPaint is a lightweight schematic drawing app built with Next.js, React, TypeScript, and Konva.
 
 ## Highlights
 
-- **Two-toolbar layout** – Components (resistors, capacitors, inductors, diodes, ICs, etc.) live on the left, while routing and annotation tools (wires, buses, text, notes) sit on the right for quick access.
-- **Konva-powered canvas** – Smooth pan/zoom, a performant grid, contextual HUD, and a context menu for clipboard or scene-level actions.
-- **Modern React stack** – Next.js 15, React 19, TypeScript, CSS Modules, and a custom KaTeX renderer for inline math/labels without relying on third‑party React 18 packages.
-- **Export-friendly scene model** – The canvas state is serialized/deserialized through `CanvasViewport`, making it straightforward to add SVG export or custom persistence later.
-- **Polished details** – Global `user-select: none`, dedicated diode-based favicon, and shared geometry/zoom helpers keep the UI cohesive.
+- Two side toolbars: components on the left, drawing/annotation tools on the right.
+- Long-press tool families with submenu indicators (small border triangles).
+- Grid-based placement and snapping for component placement, drawing placement, wire drafting, and wire vertex editing.
+- Wire styling controls for thickness and dash patterns.
+- Text and LaTeX labels with selection boxes sized to rendered content.
+- JSON open/save workflow from the top menu and `Ctrl/Cmd+S` quick export.
+
+## Current Tool Set
+
+- Component tools: resistor families, capacitor families, inductor families, diode families, switch/transistor families, logic/buffer/opamp families, source families, ground.
+- Drawing tools: `joint`, `port`, `wire`, `text`, `voltage +`, `voltage -`, `current`.
+- Right toolbar family examples:
+- `joint` <-> `port`
+- `voltage +` <-> `voltage -`
+
+## Interaction Cheatsheet
+
+- Mouse wheel: zoom in/out around cursor.
+- Right-click drag: pan canvas.
+- Left click with active component/drawing tool: place snapped entity.
+- Wire tool:
+- click to add snapped vertices.
+- preview is snapped before placing each vertex.
+- `Esc` finalizes draft wire (if it has enough points) and exits active tool.
+- Wire edit mode:
+- select a wire, then drag blue vertices.
+- vertex handles and final positions are grid-snapped while dragging.
+- Long-press on tools with triangle indicator: open alternative submenu.
+
+## Bottom Bar Behavior
+
+- When a single entity is selected (and no tool is active):
+- color palette + color picker are shown.
+- text selection adds border toggle and font size controls.
+- wire selection adds thickness menu (`1`, `2`, `3`, `5`) and dashes menu.
+- When `wire` tool is active:
+- wire thickness and dashes menus appear for new wire creation.
+
+## Keyboard Shortcuts
+
+- `W`: select wire tool.
+- `R`: rotate active placement or selected components/drawings.
+- `G`: toggle grid visibility.
+- `Esc`: cancel paste mode, finalize wire draft, and/or clear active tool (context-dependent).
+- `Ctrl/Cmd+Z`: undo.
+- `Ctrl/Cmd+Shift+Z` or `Ctrl/Cmd+Y`: redo.
+- `Ctrl/Cmd+C`: copy selection.
+- `Ctrl/Cmd+X`: cut selection.
+- `Ctrl/Cmd+V`: paste selection.
+- `Delete`: delete selection.
+- `Ctrl/Cmd+S`: quick JSON download.
+
+## Help Window
+
+- The Help popup is shown automatically on page load/reload.
+- It can be reopened from `Help -> Help` in the top menu.
+
+## File Format Notes
+
+- Scene data is stored as JSON with `components`, `drawings`, and `wires`.
+- Wires support optional style fields:
+- `strokeColor`
+- `strokeWidth`
+- `dash` (number array)
 
 ## Getting Started
 
 ### Requirements
 
-- Node.js **18.18+** or **20+** (matching Next.js 15 engine requirements)
-- npm (ships with Node) or another compatible package manager
+- Node.js 18.18+ or 20+.
+- npm.
 
-### Installation & Scripts
+### Scripts
 
 ```bash
-npm install          # install dependencies
-npm run dev          # start the dev server at http://localhost:3000
-npm run build        # create an optimized production build
-npm start            # serve the production build
-npm run lint         # run Next.js lint (will prompt to set up ESLint if not configured)
+npm install
+npm run dev
+npm run build
+npm start
+npm run lint
 ```
 
 ## Project Layout
 
-```
+```text
 app/
-  layout.tsx        Root layout + global metadata
-  page.tsx          Main CircuitPaint UI
-  icon.png          Light-blue diode favicon
+  layout.tsx
+  page.tsx
+  favicon.png
 components/
-  CanvasViewport.tsx  Konva stage, grid, tools, serialization
-  LeftToolbar.tsx      Component palette
-  RightToolbar.tsx     Wiring/annotation palette
-  MenuBar.tsx          Top menubar + dropdowns
-  ContextMenu.tsx      Canvas context menu
-  Latex.tsx            KaTeX renderer used for text entities
-  symbols/             Individual SVG/Konva component icons
+  CanvasViewport.tsx
+  MenuBar.tsx
+  ContextMenu.tsx
+  Latex.tsx
+  tools/
+    LeftToolbar.tsx
+    RightToolbar.tsx
+    ToolPanel.tsx
+  symbols/
 lib/
-  geometry.ts        Coordinate helpers (screen ↔ world)
-  tools.ts           Tool definitions & type guards
-  zoom.ts            Discrete zoom levels + helpers
-styles/globals.css   Global look-and-feel
+  geometry.ts
+  tools.ts
+  zoom.ts
+styles/
+  globals.css
 ```
-
-## Canvas & Tooling Cheatsheet
-
-- **Mouse wheel** – Discrete zoom steps centered on cursor (0.5× … 4×)
-- **Right-click + drag** – Pan the stage
-- **Right-click (tap-and-release)** – Context menu (copy/paste, grid toggle, etc.)
-- **Toolbar click** – Pick drawing/component tools; active tool highlights in each toolbar
-- **HUD** – Lower-left overlay shows zoom factor and world coordinates for quick reference
-
-## Technology Stack
-
-- **Next.js 15 / React 19** with the App Router
-- **TypeScript** for type safety across geometry, tools, and Konva bindings
-- **Konva / react-konva** for canvas rendering
-- **KaTeX** via a bespoke React component for inline or block math labels
-- **CSS Modules** for scoped component styles
-
-## Contributing
-
-Issues and pull requests are welcome. The codebase is intentionally modular—new symbols or tools should live under `components/` with supporting logic in `lib/`. If you add linting via the ESLint CLI, update `package.json`/`README.md` accordingly so `npm run lint` no longer prompts for configuration.
 
 ## License
 
-GNU Affero General Public License v3
+GNU Affero General Public License v3.0
 
 ## Author
 
-- Gus Cheng Zhang, The University of Manchester, UK (2026)
+Gus Cheng Zhang, The University of Manchester, UK

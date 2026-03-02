@@ -100,7 +100,7 @@ export default function ToolPanel({
         const hasSubmenu = submenuToolIds.length > 0;
         const hasSelectedSubmenuTool = submenuToolIds.some((submenuToolId) => submenuToolId === selectedTool);
         const isSelected = selectedTool === tool.id || hasSelectedSubmenuTool;
-        const toolButtonClass = `${styles.toolButton} ${isSelected ? styles.selected : ''}`;
+        const toolButtonClass = `${styles.toolButton} ${isSelected ? styles.selected : ''} ${hasSubmenu ? styles.hasSubmenu : ''}`;
 
         const handlePointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
           if (!hasSubmenu) return;
@@ -149,6 +149,7 @@ export default function ToolPanel({
             >
               <div className={styles.icon}>{renderIcon(tool)}</div>
               <div className={styles.label}>{tool.label}</div>
+              {hasSubmenu && <span className={styles.submenuIndicator} aria-hidden="true" />}
             </button>
             {openSubmenuTool === tool.id && (
               <div className={styles.submenu} style={{ left: `${submenuPosition.left}px`, top: `${submenuPosition.top}px` }}>

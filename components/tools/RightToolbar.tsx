@@ -10,11 +10,15 @@ interface RightToolbarProps {
 }
 
 export default function RightToolbar({ onToolSelect, selectedTool }: RightToolbarProps) {
+  const [jointFamilyTool, setJointFamilyTool] = useState<'joint' | 'port'>('joint');
   const [voltageFamilyTool, setVoltageFamilyTool] = useState<
     'voltage-plus-annotation' | 'voltage-minus-annotation'
   >('voltage-plus-annotation');
 
   useEffect(() => {
+    if (selectedTool === 'joint' || selectedTool === 'port') {
+      setJointFamilyTool(selectedTool);
+    }
     if (selectedTool === 'voltage-plus-annotation' || selectedTool === 'voltage-minus-annotation') {
       setVoltageFamilyTool(selectedTool);
     }
@@ -25,15 +29,27 @@ export default function RightToolbar({ onToolSelect, selectedTool }: RightToolba
       title="Tools"
       group="drawing"
       side="right"
-      toolIds={['joint', 'wire', 'text', voltageFamilyTool, 'current-annotation']}
+      toolIds={[jointFamilyTool, 'wire', 'text', voltageFamilyTool, 'current-annotation']}
       submenuByToolId={{
+        [jointFamilyTool]: ['joint', 'port'],
         [voltageFamilyTool]: ['voltage-plus-annotation', 'voltage-minus-annotation'],
       }}
-      onToolSelect={onToolSelect}
+      onToolSelect={(tool) => {
+        if (tool === 'joint' || tool === 'port') {
+          setJointFamilyTool(tool);
+        }
+        onToolSelect?.(tool);
+      }}
       selectedTool={selectedTool}
       renderIcon={(tool) => {
         switch (tool.id) {
           case 'joint':
+            return (
+              <svg width="24" height="24" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="4" fill="currentColor" />
+              </svg>
+            );
+          case 'port':
             return (
               <svg width="24" height="24" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />

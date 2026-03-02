@@ -33,7 +33,7 @@ export default function MenuBar({
   onFileSave,
 }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const [showHelpPopup, setShowHelpPopup] = useState(false);
+  const [showHelpPopup, setShowHelpPopup] = useState(true);
   const menuBarRef = useRef<HTMLDivElement>(null);
 
   const menus: Record<string, MenuItem[]> = {
@@ -90,7 +90,7 @@ export default function MenuBar({
 
   return (
     <div className={styles.menuBar} ref={menuBarRef}>
-      <div className={styles.menuCenterTitle}>CircuitPaint version 0.1</div>
+      <div className={styles.menuCenterTitle}>CircuitPaint</div>
       {Object.entries(menus).map(([menuName, items]) => (
         <div key={menuName} className={styles.menuContainer}>
           <div
@@ -132,27 +132,23 @@ export default function MenuBar({
             </button>
           </div>
           <div className={styles.helpBody}>
-            <div className={styles.helpSectionTitle}>CircuitPaint</div>
+            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.1</div>
 
             <div className={styles.helpMeta}>
               CircuitPaint is a lightweight schematic drawing tool developed to provide
-              clean, consistent, and publication-quality circuit symbols. While preparing
-              lecture notes, research papers, and examination materials, existing general-purpose
-              vector tools such as Inkscape were often used; however, a dedicated circuit
-              symbol editor with a consistent visual style — comparable to the schematics
-              presented in the MIT textbook <em>Principles of Power Electronics</em> —
-              was not readily available.
+              clean, consistent, and publication-quality circuit symbols. <br />
 
-              CircuitPaint was therefore created to enable rapid, high-quality schematic
-              diagram generation specifically tailored for power electronics education
-              and research.
+              <b>This tool is designed for Desktop use only for now. A mouse and keyboard are required for full functionality.</b>
             </div>
             <div className={styles.helpSectionTitle}>Quick Commands</div>
             <ul className={styles.helpList}>
               <li>Click on an empty area of the canvas to clear the current selection.</li>
               <li>Click and drag to select multiple components.</li>
+              <li><strong>Long press on a component</strong> to access additional options.</li>
               <li>Press <strong>R</strong> to rotate the selected component(s).</li>
               <li>Press <strong>G</strong> to toggle grid visibility.</li>
+              <li>Press <strong>W</strong> to select the wire tool.</li>
+              <li>Press <strong>Esc</strong> to deselect the current tool.</li>
               <li>Use <strong>Ctrl/Cmd + C</strong>, <strong>X</strong>, and <strong>V</strong> to copy, cut, and paste.</li>
               <li>Use <strong>Ctrl/Cmd + S</strong> to export the schematic as a JSON file.</li>
               <li>Use your system’s screenshot function to capture and save the schematic image.</li>
@@ -172,30 +168,11 @@ export default function MenuBar({
             </div>
 
             <div className={styles.helpMeta}>
-              <span>Software Author:</span> Cheng (Gus) Zhang
-            </div>
-
-            <div className={styles.helpMeta}>
-              <span>Affiliation:</span> Department of Electrical and Electronic Engineering,
-              The University of Manchester, United Kingdom
-            </div>
-
-            <div className={styles.helpMeta}>
-              <span>Contact:</span> cheng.zhang@manchester.ac.uk
-            </div>
-
-            <div className={styles.helpMeta}>
-              <span>Development Assistance:</span> Portions of the source code were developed
-              with AI-assisted programming tools (GitHub Copilot and OpenAI Codex).
-            </div>
-
-            <div className={styles.helpMeta}>
-              <span>Licence:</span> GNU Affero General Public License v3.0 (AGPL-3.0)
-            </div>
-
-            <div className={styles.helpMeta}>
-              <span>Copyright:</span> © {new Date().getFullYear()} Cheng (Gus) Zhang.
-              All rights reserved. Distributed under the terms of the AGPL-3.0 licence.
+              <strong>CircuitPaint</strong><br />
+              <a href="mailto:cheng.zhang@manchester.ac.uk">Cheng (Gus) Zhang</a> · Department of Electrical and Electronic Engineering, The University of Manchester, UK<br />
+              <br />
+              Developed in part using GitHub Copilot and OpenAI Codex · AGPL-3.0<br />
+              © {new Date().getFullYear()} Cheng (Gus) Zhang
             </div>
           </div>
         </div>

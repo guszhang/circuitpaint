@@ -32,6 +32,8 @@ export interface WireEntity {
   y: number;
   vertices: Point[];
   strokeColor?: string;
+  strokeWidth?: number;
+  dash?: number[];
 }
 
 export interface SceneData {
@@ -50,5 +52,5 @@ export interface CanvasFile {
 export interface ClipboardData {
   components: Omit<ComponentEntity, 'id'>[];
   drawings: Omit<DrawingEntity, 'id'>[];
-  wires: Array<{ points: Point[]; strokeColor?: string }>;
+  wires: Array<{ points: Point[]; strokeColor?: string; strokeWidth?: number; dash?: number[] }>;
 }

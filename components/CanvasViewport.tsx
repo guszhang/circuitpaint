@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Stage, Layer, Shape, Rect, Line, Circle, Group, Text, Arrow } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
+import katex from 'katex';
 import Latex from './Latex';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
 import { getNextZoomLevel, clampZoom } from '../lib/zoom';
@@ -90,8 +91,18 @@ const LABEL_PADDING_Y = 4;
 const MIN_TEXT_FONT_SIZE = 6;
 const MAX_TEXT_FONT_SIZE = 48;
 const DEFAULT_STROKE_COLOR = '#000000';
+const DEFAULT_WIRE_STROKE_WIDTH = 1;
+const WIRE_STROKE_WIDTH_OPTIONS = [1, 2, 3, 5] as const;
+const WIRE_DASH_OPTIONS = [
+  { id: 'solid', label: 'Solid', dash: [] as number[] },
+  { id: 'short', label: 'Short', dash: [6, 4] as number[] },
+  { id: 'medium', label: 'Medium', dash: [10, 6] as number[] },
+  { id: 'dot', label: 'Dot', dash: [2, 4] as number[] },
+] as const;
 const QUICK_COLOR_PALETTE = ['#000000', '#4f80ff', '#e53935', '#fb8c00', '#43a047', '#8e24aa'];
 const ZOOM_BASELINE = 2;
+const LATEX_TOKEN_REGEX = /\$\$([\s\S]+?)\$\$|\$([^$]+?)\$|\\\((.+?)\\\)|\\\[(.+?)\\\]/g;
+const renderedLabelMetricsCache = new Map<string, { width: number; height: number }>();
 
 function normalizeColorForInput(color: string | undefined) {
   if (!color) {
@@ -104,6 +115,31 @@ function normalizeColorForInput(color: string | undefined) {
     return DEFAULT_STROKE_COLOR;
   }
   return DEFAULT_STROKE_COLOR;
+}
+
+function normalizeWireStrokeWidth(value: number | undefined) {
+  if (!value || !Number.isFinite(value)) {
+    return DEFAULT_WIRE_STROKE_WIDTH;
+  }
+  return WIRE_STROKE_WIDTH_OPTIONS.includes(value as (typeof WIRE_STROKE_WIDTH_OPTIONS)[number])
+    ? value
+    : DEFAULT_WIRE_STROKE_WIDTH;
+}
+
+function normalizeWireDash(value: number[] | undefined) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return [] as number[];
+  }
+  return value.filter((item) => Number.isFinite(item) && item >= 0);
+}
+
+function areDashArraysEqual(a: number[], b: number[]) {
+  return a.length === b.length && a.every((item, index) => item === b[index]);
+}
+
+function getWireDashOptionId(value: number[]) {
+  const matched = WIRE_DASH_OPTIONS.find((option) => areDashArraysEqual(option.dash, value));
+  return matched?.id ?? 'solid';
 }
 
 function getDrawingFontSize(drawing: DrawingEntity) {
@@ -129,6 +165,32 @@ function measureLabelText(text: string, fontSize = LABEL_FONT_SIZE) {
   return { width: metrics.width, height };
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderLatexTokenHtml(content: string, display: boolean) {
+  if (!content.trim()) {
+    return '';
+  }
+  try {
+    const html = katex.renderToString(content, {
+      displayMode: display,
+      throwOnError: false,
+      strict: 'ignore',
+      output: 'html',
+    });
+    return display ? `<div class="katex-display">${html}</div>` : html;
+  } catch {
+    return escapeHtml(content);
+  }
+}
+
 function getDrawingDisplayText(drawing: DrawingEntity) {
   if (drawing.toolId === 'text') {
     return drawing.text?.trim() || 'Text';
@@ -140,12 +202,72 @@ function hasLatexSyntax(text: string) {
   return /\$[^$]+\$|\\\(.+\\\)|\\\[.+\\\]/.test(text);
 }
 
+function measureRenderedLabelText(text: string, fontSize = LABEL_FONT_SIZE) {
+  if (!hasLatexSyntax(text) || typeof document === 'undefined') {
+    return measureLabelText(text, fontSize);
+  }
+
+  const cacheKey = `${fontSize}::${text}`;
+  const cached = renderedLabelMetricsCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const htmlParts: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  LATEX_TOKEN_REGEX.lastIndex = 0;
+  // eslint-disable-next-line no-cond-assign
+  while ((match = LATEX_TOKEN_REGEX.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      htmlParts.push(escapeHtml(text.slice(lastIndex, match.index)));
+    }
+    const latexContent = match[1] ?? match[2] ?? match[3] ?? match[4] ?? '';
+    const display = Boolean(match[1] || match[4]);
+    htmlParts.push(renderLatexTokenHtml(latexContent, display));
+    lastIndex = LATEX_TOKEN_REGEX.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    htmlParts.push(escapeHtml(text.slice(lastIndex)));
+  }
+  if (htmlParts.length === 0) {
+    htmlParts.push(escapeHtml(text));
+  }
+
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-10000px';
+  container.style.top = '-10000px';
+  container.style.visibility = 'hidden';
+  container.style.pointerEvents = 'none';
+  container.style.display = 'inline-block';
+  container.style.whiteSpace = 'nowrap';
+  container.style.fontFamily = LABEL_FONT_FAMILY;
+  container.style.fontSize = `${fontSize}px`;
+  container.innerHTML = htmlParts.join('');
+
+  document.body.appendChild(container);
+  const rect = container.getBoundingClientRect();
+  document.body.removeChild(container);
+
+  const metrics = {
+    width: rect.width || text.length * fontSize * 0.6,
+    height: rect.height || fontSize * 1.2,
+  };
+  if (renderedLabelMetricsCache.size > 500) {
+    renderedLabelMetricsCache.clear();
+  }
+  renderedLabelMetricsCache.set(cacheKey, metrics);
+  return metrics;
+}
+
 function cloneScene(scene: SceneData): SceneData {
   return {
     components: scene.components.map((component) => ({ ...component })),
     drawings: scene.drawings.map((drawing) => ({ ...drawing })),
     wires: scene.wires.map((wire) => ({
       ...wire,
+      dash: wire.dash ? [...wire.dash] : [],
       vertices: wire.vertices.map((point) => ({ ...point })),
     })),
   };
@@ -167,6 +289,8 @@ function fromCanvasFile(file: CanvasFile): SceneData {
     drawings: file.drawings.map((drawing) => ({ ...drawing })),
     wires: file.wires.map((wire) => ({
       ...wire,
+      strokeWidth: normalizeWireStrokeWidth(wire.strokeWidth),
+      dash: normalizeWireDash(wire.dash),
       vertices: wire.vertices.map((point) => ({ ...point })),
     })),
   };
@@ -179,7 +303,13 @@ function getAbsoluteWirePoints(wire: WireEntity): Point[] {
   }));
 }
 
-function makeWireFromAbsolutePoints(id: string, points: Point[], strokeColor = DEFAULT_STROKE_COLOR): WireEntity {
+function makeWireFromAbsolutePoints(
+  id: string,
+  points: Point[],
+  strokeColor = DEFAULT_STROKE_COLOR,
+  strokeWidth = DEFAULT_WIRE_STROKE_WIDTH,
+  dash: number[] = []
+): WireEntity {
   const first = points[0] ?? { x: 0, y: 0 };
   return {
     id,
@@ -189,6 +319,8 @@ function makeWireFromAbsolutePoints(id: string, points: Point[], strokeColor = D
       index === 0 ? { x: 0, y: 0 } : { x: point.x - first.x, y: point.y - first.y }
     ),
     strokeColor,
+    strokeWidth: normalizeWireStrokeWidth(strokeWidth),
+    dash: normalizeWireDash(dash),
   };
 }
 
@@ -231,7 +363,7 @@ function getComponentBounds(component: ComponentEntity) {
 }
 
 function getDrawingBounds(drawing: DrawingEntity) {
-  if (drawing.toolId === 'joint') {
+  if (drawing.toolId === 'joint' || drawing.toolId === 'port') {
     return {
       minX: drawing.x - 4,
       maxX: drawing.x + 4,
@@ -242,7 +374,7 @@ function getDrawingBounds(drawing: DrawingEntity) {
 
   if (drawing.toolId === 'text') {
     const text = getDrawingDisplayText(drawing);
-    const metrics = measureLabelText(text, getDrawingFontSize(drawing));
+    const metrics = measureRenderedLabelText(text, getDrawingFontSize(drawing));
     const width = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
     const height = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
     return {
@@ -427,6 +559,35 @@ function DrawingGlyph({
     );
   }
 
+  if (drawing.toolId === 'port') {
+    return (
+      <Group
+        x={drawing.x}
+        y={drawing.y}
+        draggable={draggable}
+        listening={listening}
+        opacity={opacity}
+        dragBoundFunc={dragBoundFunc}
+        onMouseDown={onMouseDown}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
+        onDragEnd={onDragEnd}
+      >
+        <Circle x={0} y={0} radius={1.5} fill="white" stroke={strokeColor} strokeWidth={1} />
+        {isSelected && (
+          <Circle
+            x={0}
+            y={0}
+            radius={5}
+            stroke="#4f80ff"
+            strokeWidth={1}
+            listening={false}
+          />
+        )}
+      </Group>
+    );
+  }
+
   if (drawing.toolId === 'voltage-plus-annotation') {
     return (
       <Group
@@ -541,7 +702,7 @@ function DrawingGlyph({
 
   const labelText = getDrawingDisplayText(drawing);
   const labelFontSize = getDrawingFontSize(drawing);
-  const labelMetrics = measureLabelText(labelText, labelFontSize);
+  const labelMetrics = measureRenderedLabelText(labelText, labelFontSize);
   const labelBox = labelMetrics
     ? {
         width: Math.max(24, labelMetrics.width + LABEL_PADDING_X * 2),
@@ -638,6 +799,10 @@ export default function CanvasViewport({
     drawings: [],
     wires: [],
   });
+  const [wireStrokeWidth, setWireStrokeWidth] = useState<number>(DEFAULT_WIRE_STROKE_WIDTH);
+  const [wireDash, setWireDash] = useState<number[]>([]);
+  const [isWireWidthMenuOpen, setIsWireWidthMenuOpen] = useState(false);
+  const [isWireDashMenuOpen, setIsWireDashMenuOpen] = useState(false);
   const [wireDraft, setWireDraft] = useState<Point[] | null>(null);
   const [isWirePointDragging, setIsWirePointDragging] = useState(false);
 
@@ -681,6 +846,20 @@ export default function CanvasViewport({
 
   const activeComponentTool = selectedTool && isComponentTool(selectedTool) ? selectedTool : null;
   const activeDrawingTool = selectedTool && isDrawingTool(selectedTool) ? selectedTool : null;
+  const wireDashOptionId = useMemo(() => getWireDashOptionId(wireDash), [wireDash]);
+  const wireDashLabel = useMemo(
+    () => WIRE_DASH_OPTIONS.find((option) => option.id === wireDashOptionId)?.label ?? 'Solid',
+    [wireDashOptionId]
+  );
+  const wireHoverPoint = useMemo<Point | null>(() => {
+    if (activeDrawingTool !== 'wire') {
+      return null;
+    }
+    return {
+      x: snapToGrid(mouseWorldPos.x),
+      y: snapToGrid(mouseWorldPos.y),
+    };
+  }, [activeDrawingTool, mouseWorldPos]);
 
   const selectedComponentSet = useMemo(() => new Set(selectedComponentIds), [selectedComponentIds]);
   const selectedDrawingSet = useMemo(() => new Set(selectedDrawingIds), [selectedDrawingIds]);
@@ -740,6 +919,22 @@ export default function CanvasViewport({
     ? getDrawingFontSize(selectedTextDrawing)
     : LABEL_FONT_SIZE;
   const selectedTextBorder = selectedTextDrawing?.border === true;
+  const selectedWire = useMemo(() => {
+    if (singleSelection?.kind !== 'wire') {
+      return null;
+    }
+    return wires.find((item) => item.id === singleSelection.id) ?? null;
+  }, [singleSelection, wires]);
+  const selectedWireStrokeWidth = normalizeWireStrokeWidth(selectedWire?.strokeWidth);
+  const selectedWireDash = useMemo(() => normalizeWireDash(selectedWire?.dash), [selectedWire?.dash]);
+  const selectedWireDashOptionId = useMemo(
+    () => getWireDashOptionId(selectedWireDash),
+    [selectedWireDash]
+  );
+  const selectedWireDashLabel = useMemo(
+    () => WIRE_DASH_OPTIONS.find((option) => option.id === selectedWireDashOptionId)?.label ?? 'Solid',
+    [selectedWireDashOptionId]
+  );
 
   useEffect(() => {
     selectedComponentIdsRef.current = selectedComponentIds;
@@ -890,6 +1085,55 @@ export default function CanvasViewport({
       });
     },
     [selectedTextDrawing, updateScene]
+  );
+
+  const applySelectedWireStrokeWidth = useCallback(
+    (strokeWidth: number) => {
+      if (!selectedWire) {
+        return;
+      }
+      const nextStrokeWidth = normalizeWireStrokeWidth(strokeWidth);
+      updateScene((prev) => {
+        let changed = false;
+        const wiresNext = prev.wires.map((wire) => {
+          if (wire.id !== selectedWire.id) {
+            return wire;
+          }
+          if (normalizeWireStrokeWidth(wire.strokeWidth) === nextStrokeWidth) {
+            return wire;
+          }
+          changed = true;
+          return { ...wire, strokeWidth: nextStrokeWidth };
+        });
+        return changed ? { ...prev, wires: wiresNext } : prev;
+      });
+    },
+    [selectedWire, updateScene]
+  );
+
+  const applySelectedWireDash = useCallback(
+    (dash: number[]) => {
+      if (!selectedWire) {
+        return;
+      }
+      const nextDash = normalizeWireDash(dash);
+      updateScene((prev) => {
+        let changed = false;
+        const wiresNext = prev.wires.map((wire) => {
+          if (wire.id !== selectedWire.id) {
+            return wire;
+          }
+          const currentDash = normalizeWireDash(wire.dash);
+          if (areDashArraysEqual(currentDash, nextDash)) {
+            return wire;
+          }
+          changed = true;
+          return { ...wire, dash: nextDash };
+        });
+        return changed ? { ...prev, wires: wiresNext } : prev;
+      });
+    },
+    [selectedWire, updateScene]
   );
 
   const captureDragHistory = useCallback(() => {
@@ -1231,6 +1475,8 @@ export default function CanvasViewport({
           y: point.y - anchor.y,
         })),
         strokeColor: wire.strokeColor,
+        strokeWidth: wire.strokeWidth,
+        dash: wire.dash ? [...wire.dash] : [],
       })),
     });
     return true;
@@ -1365,6 +1611,15 @@ export default function CanvasViewport({
       onRegisterViewportControls(viewportControls);
     }
   }, [onRegisterViewportControls, viewportControls]);
+
+  useEffect(() => {
+    const closeMenus = () => {
+      setIsWireWidthMenuOpen(false);
+      setIsWireDashMenuOpen(false);
+    };
+    window.addEventListener('pointerdown', closeMenus);
+    return () => window.removeEventListener('pointerdown', closeMenus);
+  }, []);
 
   useEffect(() => {
     const updateSize = () => {
@@ -1550,7 +1805,9 @@ export default function CanvasViewport({
                   x: snapToGrid(point.x + snapped.x),
                   y: snapToGrid(point.y + snapped.y),
                 })),
-                wire.strokeColor ?? DEFAULT_STROKE_COLOR
+                wire.strokeColor ?? DEFAULT_STROKE_COLOR,
+                wire.strokeWidth ?? DEFAULT_WIRE_STROKE_WIDTH,
+                wire.dash ?? []
               )
             ),
           ],
@@ -1673,12 +1930,21 @@ export default function CanvasViewport({
     (wireId: string, pointIndex: number) => {
       return (e: KonvaEventObject<DragEvent>) => {
         e.cancelBubble = true;
+        const parent = e.target.getParent();
+        const baseX = parent?.x() ?? 0;
+        const baseY = parent?.y() ?? 0;
         const { x, y } = e.target.position();
+        const snappedX = snapToGrid(baseX + x);
+        const snappedY = snapToGrid(baseY + y);
+        e.target.position({ x: snappedX - baseX, y: snappedY - baseY });
         updateScene((prev) => ({
           ...prev,
           wires: prev.wires.map((wire) => {
             if (wire.id !== wireId) return wire;
-            return setWireVertexAbsolute(wire, pointIndex, { x: wire.x + x, y: wire.y + y });
+            return setWireVertexAbsolute(wire, pointIndex, {
+              x: snappedX,
+              y: snappedY,
+            });
           }),
         }), false);
       };
@@ -1759,7 +2025,13 @@ export default function CanvasViewport({
               ...prev,
               wires: [
                 ...prev.wires,
-                makeWireFromAbsolutePoints(makeId('wire'), wireDraft, DEFAULT_STROKE_COLOR),
+                makeWireFromAbsolutePoints(
+                  makeId('wire'),
+                  wireDraft,
+                  DEFAULT_STROKE_COLOR,
+                  wireStrokeWidth,
+                  wireDash
+                ),
               ],
             }));
           }
@@ -1844,10 +2116,17 @@ export default function CanvasViewport({
     selectedTool,
     undo,
     updateScene,
+    wireDash,
     wireDraft,
+    wireStrokeWidth,
   ]);
 
   useEffect(() => {
+    if (selectedTool !== 'wire') {
+      setIsWireWidthMenuOpen(false);
+      setIsWireDashMenuOpen(false);
+    }
+
     if (selectedTool && isPasteMode) {
       setIsPasteMode(false);
     }
@@ -1951,6 +2230,8 @@ export default function CanvasViewport({
           {wires.map((wire) => {
             const relativePoints = wire.vertices.flatMap((point) => [point.x, point.y]);
             const isSelected = selectedWireSet.has(wire.id);
+            const lineWidth = normalizeWireStrokeWidth(wire.strokeWidth);
+            const lineDash = normalizeWireDash(wire.dash);
             return (
               <React.Fragment key={wire.id}>
                 <Group
@@ -1961,10 +2242,11 @@ export default function CanvasViewport({
                   <Line
                     points={relativePoints}
                     stroke={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
-                    strokeWidth={1}
+                    strokeWidth={lineWidth}
+                    dash={lineDash}
                     lineJoin="round"
                     lineCap="round"
-                    hitStrokeWidth={6}
+                    hitStrokeWidth={Math.max(6, lineWidth + 4)}
                   />
                   {isSelected && !selectedTool && !isPasteMode &&
                     wire.vertices.map((point, index) => (
@@ -2005,7 +2287,8 @@ export default function CanvasViewport({
                 points={wire.points
                   .flatMap((point) => [point.x + hoverPoint.x, point.y + hoverPoint.y])}
                 stroke="#888888"
-                strokeWidth={1}
+                strokeWidth={normalizeWireStrokeWidth(wire.strokeWidth)}
+                dash={normalizeWireDash(wire.dash)}
                 lineJoin="round"
                 lineCap="round"
                 opacity={0.6}
@@ -2017,18 +2300,20 @@ export default function CanvasViewport({
             <Line
               points={wireDraft.flatMap((point) => [point.x, point.y])}
               stroke={DEFAULT_STROKE_COLOR}
-              strokeWidth={1}
+              strokeWidth={wireStrokeWidth}
+              dash={wireDash}
               lineJoin="round"
               lineCap="round"
               listening={false}
             />
           )}
 
-          {activeDrawingTool === 'wire' && wireDraft && hoverPoint && wireDraft.length >= 1 && (
+          {activeDrawingTool === 'wire' && wireDraft && wireHoverPoint && wireDraft.length >= 1 && (
             <Line
-              points={[...wireDraft, hoverPoint].flatMap((point) => [point.x, point.y])}
+              points={[...wireDraft, wireHoverPoint].flatMap((point) => [point.x, point.y])}
               stroke="#888888"
-              strokeWidth={1}
+              strokeWidth={wireStrokeWidth}
+              dash={wireDash}
               lineJoin="round"
               lineCap="round"
               opacity={0.6}
@@ -2036,8 +2321,8 @@ export default function CanvasViewport({
             />
           )}
 
-          {activeDrawingTool === 'wire' && hoverPoint && (
-            <Circle x={hoverPoint.x} y={hoverPoint.y} radius={2} fill="#888888" opacity={0.6} listening={false} />
+          {activeDrawingTool === 'wire' && wireHoverPoint && (
+            <Circle x={wireHoverPoint.x} y={wireHoverPoint.y} radius={2} fill="#888888" opacity={0.6} listening={false} />
           )}
 
           {activeDrawingTool && activeDrawingTool !== 'wire' && hoverPoint && (
@@ -2081,7 +2366,7 @@ export default function CanvasViewport({
           const content = getDrawingDisplayText(drawing);
           const isLatex = hasLatexSyntax(content);
           const fontSize = getDrawingFontSize(drawing);
-          const metrics = measureLabelText(content, fontSize);
+          const metrics = measureRenderedLabelText(content, fontSize);
           const boxWidth = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
           const boxHeight = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
           const color = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
@@ -2145,6 +2430,74 @@ export default function CanvasViewport({
         </div>
       </div>
 
+      {selectedTool === 'wire' && (
+        <div className={styles.bottomEditorBar}>
+          <span className={styles.editorLabel}>Wire</span>
+          <div className={styles.menuGroup}>
+            <button
+              type="button"
+              className={styles.menuButton}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsWireDashMenuOpen(false);
+                setIsWireWidthMenuOpen((prev) => !prev);
+              }}
+            >
+              Thickness: {wireStrokeWidth}
+            </button>
+            {isWireWidthMenuOpen && (
+              <div className={styles.upwardMenu} onPointerDown={(event) => event.stopPropagation()}>
+                {WIRE_STROKE_WIDTH_OPTIONS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`${styles.menuItemButton} ${wireStrokeWidth === value ? styles.menuItemButtonActive : ''}`}
+                    onClick={() => {
+                      setWireStrokeWidth(value);
+                      setIsWireWidthMenuOpen(false);
+                    }}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className={styles.menuGroup}>
+            <button
+              type="button"
+              className={styles.menuButton}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsWireWidthMenuOpen(false);
+                setIsWireDashMenuOpen((prev) => !prev);
+              }}
+            >
+              Dashes: {wireDashLabel}
+            </button>
+            {isWireDashMenuOpen && (
+              <div className={styles.upwardMenu} onPointerDown={(event) => event.stopPropagation()}>
+                {WIRE_DASH_OPTIONS.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={`${styles.menuItemButton} ${wireDashOptionId === option.id ? styles.menuItemButtonActive : ''}`}
+                    onClick={() => {
+                      setWireDash([...option.dash]);
+                      setIsWireDashMenuOpen(false);
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {singleSelection && !selectedTool && !isPasteMode && (
         <div className={styles.bottomEditorBar}>
           <span className={styles.editorLabel}>Color</span>
@@ -2171,6 +2524,72 @@ export default function CanvasViewport({
               aria-label="Pick custom color"
             />
           </label>
+          {selectedWire && (
+            <>
+              <div className={styles.menuGroup}>
+                <button
+                  type="button"
+                  className={styles.menuButton}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsWireDashMenuOpen(false);
+                    setIsWireWidthMenuOpen((prev) => !prev);
+                  }}
+                >
+                  Thickness: {selectedWireStrokeWidth}
+                </button>
+                {isWireWidthMenuOpen && (
+                  <div className={styles.upwardMenu} onPointerDown={(event) => event.stopPropagation()}>
+                    {WIRE_STROKE_WIDTH_OPTIONS.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={`${styles.menuItemButton} ${selectedWireStrokeWidth === value ? styles.menuItemButtonActive : ''}`}
+                        onClick={() => {
+                          applySelectedWireStrokeWidth(value);
+                          setIsWireWidthMenuOpen(false);
+                        }}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className={styles.menuGroup}>
+                <button
+                  type="button"
+                  className={styles.menuButton}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsWireWidthMenuOpen(false);
+                    setIsWireDashMenuOpen((prev) => !prev);
+                  }}
+                >
+                  Dashes: {selectedWireDashLabel}
+                </button>
+                {isWireDashMenuOpen && (
+                  <div className={styles.upwardMenu} onPointerDown={(event) => event.stopPropagation()}>
+                    {WIRE_DASH_OPTIONS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        className={`${styles.menuItemButton} ${selectedWireDashOptionId === option.id ? styles.menuItemButtonActive : ''}`}
+                        onClick={() => {
+                          applySelectedWireDash(option.dash);
+                          setIsWireDashMenuOpen(false);
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
           {selectedTextDrawing && (
             <>
               <label className={styles.toggleLabel}>
