@@ -26,7 +26,7 @@ import {
 } from './canvas/types';
 import { useInteractionTriage } from './canvas/useInteractionTriage';
 import styles from './CanvasViewport.module.css';
-import { COMPONENT_SYMBOL_BY_TOOL_ID, DRAWING_SYMBOL_BY_TOOL_ID } from './symbols/toolSymbols';
+import { getComponentSymbolComponent, getDrawingSymbolComponent } from './symbols/toolSymbols';
 import {
   LABEL_FONT_SIZE,
   LABEL_FONT_FAMILY,
@@ -45,7 +45,7 @@ interface CanvasViewportProps {
   onToolComplete?: () => void;
   showGrid?: boolean;
   onToggleGrid?: () => void;
-  onRegisterViewportControls?: (controls: CanvasViewportControls) => void;
+  onViewportControlsChange?: (controls: CanvasViewportControls) => void;
 }
 
 export interface CanvasViewportControls {
@@ -308,7 +308,7 @@ function ComponentGlyph({
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }) {
-  const SymbolComponent = COMPONENT_SYMBOL_BY_TOOL_ID[toolId];
+  const SymbolComponent = getComponentSymbolComponent(toolId);
 
   return (
     <SymbolComponent
@@ -356,7 +356,7 @@ function DrawingGlyph({
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }) {
-  const SymbolComponent = DRAWING_SYMBOL_BY_TOOL_ID[drawing.toolId];
+  const SymbolComponent = getDrawingSymbolComponent(drawing.toolId);
 
   return (
     <SymbolComponent
@@ -387,7 +387,7 @@ export default function CanvasViewport({
   onToolComplete,
   showGrid = true,
   onToggleGrid,
-  onRegisterViewportControls,
+  onViewportControlsChange,
 }: CanvasViewportProps) {
   const [camera, setCamera] = useState<Camera>({ offsetX: 400, offsetY: 300, zoom: ZOOM_BASELINE });
   const [stageSize, setStageSize] = useState({ width: 800, height: 600 });
@@ -1211,10 +1211,10 @@ export default function CanvasViewport({
   );
 
   useEffect(() => {
-    if (onRegisterViewportControls) {
-      onRegisterViewportControls(viewportControls);
+    if (onViewportControlsChange) {
+      onViewportControlsChange(viewportControls);
     }
-  }, [onRegisterViewportControls, viewportControls]);
+  }, [onViewportControlsChange, viewportControls]);
 
   useEffect(() => {
     const closeMenus = () => {

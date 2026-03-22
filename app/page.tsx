@@ -188,7 +188,7 @@ export default function Home() {
     setShowGrid((prev) => !prev);
   }, []);
 
-  const handleRegisterViewportControls = useCallback((controls: CanvasViewportControls) => {
+  const handleViewportControlsChange = useCallback((controls: CanvasViewportControls) => {
     viewportControlsRef.current = controls;
   }, []);
 
@@ -389,7 +389,7 @@ export default function Home() {
           onToggleGrid={handleToggleGrid}
           showGrid={showGrid}
           onToolComplete={handleToolComplete}
-          onRegisterViewportControls={handleRegisterViewportControls}
+          onViewportControlsChange={handleViewportControlsChange}
         />
         <RightToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
       </div>

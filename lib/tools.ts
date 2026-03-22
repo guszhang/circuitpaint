@@ -1,58 +1,51 @@
-const TOOL_GROUP_CONFIG = {
-  component: [
-    { id: 'resistor', label: 'Resistor' },
-    { id: 'potentiometer', label: 'Potentiometer' },
-    { id: 'capacitor', label: 'Capacitor' },
-    { id: 'polarised-capacitor', label: 'Polarised Capacitor' },
-    { id: 'variable-capacitor', label: 'Variable Capacitor' },
-    { id: 'inductor', label: 'Inductor' },
-    { id: 'variable-inductor', label: 'Variable Inductor' },
-    { id: 'transformer', label: 'Transformer' },
-    { id: 'diode', label: 'Diode' },
-    { id: 'zener-diode', label: 'Zener Diode' },
-    { id: 'schottky-diode', label: 'Schottky Diode' },
-    { id: 'switch', label: 'Switch' },
-    { id: 'n-mosfet', label: 'N-MOSFET' },
-    { id: 'p-mosfet', label: 'P-MOSFET' },
-    { id: 'npn-bjt', label: 'NPN-BJT' },
-    { id: 'pnp-bjt', label: 'PNP-BJT' },
-    { id: 'spark-gap', label: 'Spark Gap' },
-    { id: 'ic', label: 'Buffer' },
-    { id: 'not-gate', label: 'NOT Gate' },
-    { id: 'and-gate', label: 'AND Gate' },
-    { id: 'or-gate', label: 'OR Gate' },
-    { id: 'nand-gate', label: 'NAND Gate' },
-    { id: 'nor-gate', label: 'NOR Gate' },
-    { id: 'xor-gate', label: 'XOR Gate' },
-    { id: 'opamp', label: 'Op Amp' },
-    { id: 'ground', label: 'Ground' },
-    { id: 'v-rail', label: 'V Rail' },
-    { id: 'vss', label: 'VSS' },
-    { id: 'chassis-ground', label: 'Chassis Ground' },
-    { id: 'source', label: 'Voltage Source' },
-    { id: 'current-source', label: 'Current Source' },
-    { id: 'ac-source', label: 'AC Source' },
-    { id: 'controlled-voltage-source', label: 'Controlled Voltage Source' },
-    { id: 'controlled-current-source', label: 'Controlled Current Source' },
-  ],
-  drawing: [
-    { id: 'joint', label: 'Joint' },
-    { id: 'port', label: 'Port' },
-    { id: 'wire', label: 'Wire' },
-    { id: 'text', label: 'Text' },
-    { id: 'voltage-plus-annotation', label: 'Voltage +' },
-    { id: 'voltage-minus-annotation', label: 'Voltage -' },
-    { id: 'current-annotation', label: 'Current' },
-  ],
-} as const;
+const TOOL_DEFINITIONS = [
+  { id: 'resistor', label: 'Resistor', group: 'component' },
+  { id: 'potentiometer', label: 'Potentiometer', group: 'component' },
+  { id: 'capacitor', label: 'Capacitor', group: 'component' },
+  { id: 'polarised-capacitor', label: 'Polarised Capacitor', group: 'component' },
+  { id: 'variable-capacitor', label: 'Variable Capacitor', group: 'component' },
+  { id: 'inductor', label: 'Inductor', group: 'component' },
+  { id: 'variable-inductor', label: 'Variable Inductor', group: 'component' },
+  { id: 'transformer', label: 'Transformer', group: 'component' },
+  { id: 'diode', label: 'Diode', group: 'component' },
+  { id: 'zener-diode', label: 'Zener Diode', group: 'component' },
+  { id: 'schottky-diode', label: 'Schottky Diode', group: 'component' },
+  { id: 'switch', label: 'Switch', group: 'component' },
+  { id: 'n-mosfet', label: 'N-MOSFET', group: 'component' },
+  { id: 'p-mosfet', label: 'P-MOSFET', group: 'component' },
+  { id: 'npn-bjt', label: 'NPN-BJT', group: 'component' },
+  { id: 'pnp-bjt', label: 'PNP-BJT', group: 'component' },
+  { id: 'spark-gap', label: 'Spark Gap', group: 'component' },
+  { id: 'ic', label: 'Buffer', group: 'component' },
+  { id: 'not-gate', label: 'NOT Gate', group: 'component' },
+  { id: 'and-gate', label: 'AND Gate', group: 'component' },
+  { id: 'or-gate', label: 'OR Gate', group: 'component' },
+  { id: 'nand-gate', label: 'NAND Gate', group: 'component' },
+  { id: 'nor-gate', label: 'NOR Gate', group: 'component' },
+  { id: 'xor-gate', label: 'XOR Gate', group: 'component' },
+  { id: 'opamp', label: 'Op Amp', group: 'component' },
+  { id: 'ground', label: 'Ground', group: 'component' },
+  { id: 'v-rail', label: 'V Rail', group: 'component' },
+  { id: 'vss', label: 'VSS', group: 'component' },
+  { id: 'chassis-ground', label: 'Chassis Ground', group: 'component' },
+  { id: 'source', label: 'Voltage Source', group: 'component' },
+  { id: 'current-source', label: 'Current Source', group: 'component' },
+  { id: 'ac-source', label: 'AC Source', group: 'component' },
+  { id: 'controlled-voltage-source', label: 'Controlled Voltage Source', group: 'component' },
+  { id: 'controlled-current-source', label: 'Controlled Current Source', group: 'component' },
+  { id: 'joint', label: 'Joint', group: 'drawing' },
+  { id: 'port', label: 'Port', group: 'drawing' },
+  { id: 'wire', label: 'Wire', group: 'drawing' },
+  { id: 'text', label: 'Text', group: 'drawing' },
+  { id: 'voltage-plus-annotation', label: 'Voltage +', group: 'drawing' },
+  { id: 'voltage-minus-annotation', label: 'Voltage -', group: 'drawing' },
+  { id: 'current-annotation', label: 'Current', group: 'drawing' },
+] as const;
 
-export type ToolGroup = keyof typeof TOOL_GROUP_CONFIG;
-
-type ToolGroupEntry<G extends ToolGroup> = (typeof TOOL_GROUP_CONFIG)[G][number];
-
-export type ComponentToolId = ToolGroupEntry<'component'>['id'];
-export type DrawingToolId = ToolGroupEntry<'drawing'>['id'];
-export type ToolId = ComponentToolId | DrawingToolId;
+export type ToolGroup = (typeof TOOL_DEFINITIONS)[number]['group'];
+export type ToolId = (typeof TOOL_DEFINITIONS)[number]['id'];
+export type ComponentToolId = Extract<(typeof TOOL_DEFINITIONS)[number], { group: 'component' }>['id'];
+export type DrawingToolId = Extract<(typeof TOOL_DEFINITIONS)[number], { group: 'drawing' }>['id'];
 
 export interface ToolDefinition {
   id: ToolId;
@@ -60,25 +53,100 @@ export interface ToolDefinition {
   group: ToolGroup;
 }
 
-const TOOLS_BY_GROUP = Object.fromEntries(
-  (Object.entries(TOOL_GROUP_CONFIG) as Array<[ToolGroup, readonly ToolGroupEntry<ToolGroup>[]]>).map(
-    ([group, tools]) => [
-      group,
-      tools.map((tool) => ({
-        ...tool,
-        group,
-      })),
-    ]
-  )
-) as Record<ToolGroup, ToolDefinition[]>;
+export interface ToolFamilyDefinition<T extends ToolId = ToolId> {
+  key: string;
+  group: ToolGroup;
+  defaultToolId: T;
+  toolIds: readonly T[];
+}
 
-const TOOL_DEFINITIONS: ToolDefinition[] = Object.values(TOOLS_BY_GROUP).flat();
+export const COMPONENT_TOOL_FAMILIES = [
+  { key: 'resistor-family', group: 'component', defaultToolId: 'resistor', toolIds: ['resistor', 'potentiometer'] },
+  {
+    key: 'capacitor-family',
+    group: 'component',
+    defaultToolId: 'capacitor',
+    toolIds: ['capacitor', 'polarised-capacitor', 'variable-capacitor'],
+  },
+  {
+    key: 'inductor-family',
+    group: 'component',
+    defaultToolId: 'inductor',
+    toolIds: ['inductor', 'variable-inductor', 'transformer'],
+  },
+  {
+    key: 'diode-family',
+    group: 'component',
+    defaultToolId: 'diode',
+    toolIds: ['diode', 'zener-diode', 'schottky-diode'],
+  },
+  {
+    key: 'switch-family',
+    group: 'component',
+    defaultToolId: 'switch',
+    toolIds: ['switch', 'n-mosfet', 'p-mosfet', 'npn-bjt', 'pnp-bjt', 'spark-gap'],
+  },
+  {
+    key: 'logic-family',
+    group: 'component',
+    defaultToolId: 'ic',
+    toolIds: ['ic', 'not-gate', 'and-gate', 'or-gate', 'nand-gate', 'nor-gate', 'xor-gate', 'opamp'],
+  },
+  {
+    key: 'source-family',
+    group: 'component',
+    defaultToolId: 'source',
+    toolIds: ['source', 'current-source', 'ac-source', 'controlled-voltage-source', 'controlled-current-source'],
+  },
+  {
+    key: 'ground-family',
+    group: 'component',
+    defaultToolId: 'ground',
+    toolIds: ['ground', 'v-rail', 'vss', 'chassis-ground'],
+  },
+] as const satisfies readonly ToolFamilyDefinition<ComponentToolId>[];
 
-const COMPONENT_TOOL_IDS = TOOL_GROUP_CONFIG.component.map((tool) => tool.id) as ComponentToolId[];
-const DRAWING_TOOL_IDS = TOOL_GROUP_CONFIG.drawing.map((tool) => tool.id) as DrawingToolId[];
+export const DRAWING_TOOL_FAMILIES = [
+  { key: 'joint-family', group: 'drawing', defaultToolId: 'joint', toolIds: ['joint', 'port'] },
+  { key: 'wire-family', group: 'drawing', defaultToolId: 'wire', toolIds: ['wire'] },
+  { key: 'text-family', group: 'drawing', defaultToolId: 'text', toolIds: ['text'] },
+  {
+    key: 'voltage-family',
+    group: 'drawing',
+    defaultToolId: 'voltage-plus-annotation',
+    toolIds: ['voltage-plus-annotation', 'voltage-minus-annotation'],
+  },
+  {
+    key: 'current-family',
+    group: 'drawing',
+    defaultToolId: 'current-annotation',
+    toolIds: ['current-annotation'],
+  },
+] as const satisfies readonly ToolFamilyDefinition<DrawingToolId>[];
 
-const COMPONENT_TOOL_SET = new Set<ComponentToolId>(COMPONENT_TOOL_IDS);
-const DRAWING_TOOL_SET = new Set<DrawingToolId>(DRAWING_TOOL_IDS);
+const TOOL_DEFINITION_BY_ID = new Map<ToolId, ToolDefinition>(
+  TOOL_DEFINITIONS.map((tool) => [tool.id, tool])
+);
+
+const TOOLS_BY_GROUP = {
+  component: TOOL_DEFINITIONS.filter((tool) => tool.group === 'component'),
+  drawing: TOOL_DEFINITIONS.filter((tool) => tool.group === 'drawing'),
+} as const satisfies Record<ToolGroup, readonly ToolDefinition[]>;
+
+const COMPONENT_TOOL_SET = new Set<ComponentToolId>(
+  TOOLS_BY_GROUP.component.map((tool) => tool.id as ComponentToolId)
+);
+const DRAWING_TOOL_SET = new Set<DrawingToolId>(
+  TOOLS_BY_GROUP.drawing.map((tool) => tool.id as DrawingToolId)
+);
+
+const TOOL_FAMILY_BY_TOOL_ID = new Map<ToolId, readonly ToolId[]>();
+
+for (const family of [...COMPONENT_TOOL_FAMILIES, ...DRAWING_TOOL_FAMILIES]) {
+  for (const toolId of family.toolIds) {
+    TOOL_FAMILY_BY_TOOL_ID.set(toolId, family.toolIds);
+  }
+}
 
 export function isComponentTool(tool: string): tool is ComponentToolId {
   return COMPONENT_TOOL_SET.has(tool as ComponentToolId);
@@ -88,6 +156,18 @@ export function isDrawingTool(tool: string): tool is DrawingToolId {
   return DRAWING_TOOL_SET.has(tool as DrawingToolId);
 }
 
+export function getToolDefinition(toolId: ToolId): ToolDefinition {
+  const tool = TOOL_DEFINITION_BY_ID.get(toolId);
+  if (!tool) {
+    throw new Error(`Unknown tool: ${toolId}`);
+  }
+  return tool;
+}
+
 export function getToolsByGroup(group: ToolGroup): ToolDefinition[] {
-  return TOOLS_BY_GROUP[group];
+  return [...TOOLS_BY_GROUP[group]];
+}
+
+export function getToolFamily(toolId: ToolId): readonly ToolId[] {
+  return TOOL_FAMILY_BY_TOOL_ID.get(toolId) ?? [toolId];
 }

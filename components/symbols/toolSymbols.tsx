@@ -44,57 +44,61 @@ import WireSymbol from './WireSymbol';
 import XorGateSymbol from './XorGateSymbol';
 import ZenerDiodeSymbol from './ZenerDiodeSymbol';
 
-export const COMPONENT_SYMBOL_BY_TOOL_ID: Record<ComponentToolId, React.ComponentType<any>> = {
-  resistor: ResistorSymbol,
-  potentiometer: PotentiometerSymbol,
-  capacitor: CapacitorSymbol,
+const TOOL_SYMBOL_COMPONENT_BY_ID: Record<ToolId, React.ComponentType<any>> = {
+  'resistor': ResistorSymbol,
+  'potentiometer': PotentiometerSymbol,
+  'capacitor': CapacitorSymbol,
   'polarised-capacitor': PolarisedCapacitorSymbol,
   'variable-capacitor': VariableCapacitorSymbol,
-  inductor: InductorSymbol,
+  'inductor': InductorSymbol,
   'variable-inductor': VariableInductorSymbol,
-  transformer: TransformerSymbol,
-  diode: DiodeSymbol,
+  'transformer': TransformerSymbol,
+  'diode': DiodeSymbol,
   'zener-diode': ZenerDiodeSymbol,
   'schottky-diode': SchottkyDiodeSymbol,
-  switch: SwitchSymbol,
+  'switch': SwitchSymbol,
   'n-mosfet': NMosfetSymbol,
   'p-mosfet': PMosfetSymbol,
   'npn-bjt': NpnBjtSymbol,
   'pnp-bjt': PnpBjtSymbol,
   'spark-gap': SparkGapSymbol,
-  ic: IcSymbol,
+  'ic': IcSymbol,
   'not-gate': NotGateSymbol,
   'and-gate': AndGateSymbol,
   'or-gate': OrGateSymbol,
   'nand-gate': NandGateSymbol,
   'nor-gate': NorGateSymbol,
   'xor-gate': XorGateSymbol,
-  opamp: OpAmpSymbol,
-  ground: GroundSymbol,
+  'opamp': OpAmpSymbol,
+  'ground': GroundSymbol,
   'v-rail': VRailSymbol,
-  vss: VssSymbol,
+  'vss': VssSymbol,
   'chassis-ground': ChassisGroundSymbol,
-  source: SourceSymbol,
+  'source': SourceSymbol,
   'current-source': CurrentSourceSymbol,
   'ac-source': AcSourceSymbol,
   'controlled-voltage-source': ControlledVoltageSourceSymbol,
   'controlled-current-source': ControlledCurrentSourceSymbol,
-};
-
-export const DRAWING_SYMBOL_BY_TOOL_ID: Record<DrawingToolId, React.ComponentType<any>> = {
-  joint: JointSymbol,
-  port: PortSymbol,
-  wire: WireSymbol,
-  text: TextSymbol,
+  'joint': JointSymbol,
+  'port': PortSymbol,
+  'wire': WireSymbol,
+  'text': TextSymbol,
   'voltage-plus-annotation': VoltagePlusAnnotationSymbol,
   'voltage-minus-annotation': VoltageMinusAnnotationSymbol,
   'current-annotation': CurrentAnnotationSymbol,
 };
 
-export const TOOL_SYMBOL_BY_ID: Record<ToolId, React.ComponentType<any>> = {
-  ...COMPONENT_SYMBOL_BY_TOOL_ID,
-  ...DRAWING_SYMBOL_BY_TOOL_ID,
-};
+export function getComponentSymbolComponent(toolId: ComponentToolId) {
+  return TOOL_SYMBOL_COMPONENT_BY_ID[toolId];
+}
+
+export function getDrawingSymbolComponent(toolId: DrawingToolId) {
+  return TOOL_SYMBOL_COMPONENT_BY_ID[toolId];
+}
+
+export function getToolSymbolComponent(toolId: ToolId) {
+  return TOOL_SYMBOL_COMPONENT_BY_ID[toolId];
+}
 
 const TOOL_ICON_SCALE_BY_ID: Partial<Record<ToolId, number>> = {
   joint: 1.6,

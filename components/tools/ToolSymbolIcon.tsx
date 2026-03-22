@@ -4,8 +4,8 @@ import React from 'react';
 import { Group, Layer, Stage } from 'react-konva';
 import type { ToolId } from '../../lib/tools';
 import {
-  TOOL_SYMBOL_BY_ID,
   getToolSymbolIconScale,
+  getToolSymbolComponent,
   getToolSymbolPreviewProps,
 } from '../symbols/toolSymbols';
 
@@ -16,7 +16,7 @@ interface ToolSymbolIconProps {
 const TOOL_ICON_COLOR = '#2a3b57';
 
 export default function ToolSymbolIcon({ toolId }: ToolSymbolIconProps) {
-  const SymbolComponent = TOOL_SYMBOL_BY_ID[toolId];
+  const SymbolComponent = getToolSymbolComponent(toolId);
 
   if (!SymbolComponent) {
     return null;

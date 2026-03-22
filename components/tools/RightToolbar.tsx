@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import type { ToolId } from '../../lib/tools';
+import React from 'react';
+import { DRAWING_TOOL_FAMILIES, type DrawingToolId, type ToolId } from '../../lib/tools';
 import ToolPanel from './ToolPanel';
+import { useToolFamilySelection } from './useToolFamilySelection';
 
 interface RightToolbarProps {
   onToolSelect?: (tool: ToolId) => void;
@@ -10,37 +11,20 @@ interface RightToolbarProps {
 }
 
 export default function RightToolbar({ onToolSelect, selectedTool }: RightToolbarProps) {
-  const [jointFamilyTool, setJointFamilyTool] = useState<'joint' | 'port'>('joint');
-  const [voltageFamilyTool, setVoltageFamilyTool] = useState<
-    'voltage-plus-annotation' | 'voltage-minus-annotation'
-  >('voltage-plus-annotation');
-
-  useEffect(() => {
-    if (selectedTool === 'joint' || selectedTool === 'port') {
-      setJointFamilyTool(selectedTool);
-    }
-    if (selectedTool === 'voltage-plus-annotation' || selectedTool === 'voltage-minus-annotation') {
-      setVoltageFamilyTool(selectedTool);
-    }
-  }, [selectedTool]);
+  const { toolIds, submenuByToolId, handleToolSelect } = useToolFamilySelection<DrawingToolId>(
+    DRAWING_TOOL_FAMILIES,
+    selectedTool
+  );
 
   return (
     <ToolPanel
       title="Tools"
       group="drawing"
       side="right"
-      toolIds={[jointFamilyTool, 'wire', 'text', voltageFamilyTool, 'current-annotation']}
-      submenuByToolId={{
-        [jointFamilyTool]: ['joint', 'port'],
-        [voltageFamilyTool]: ['voltage-plus-annotation', 'voltage-minus-annotation'],
-      }}
+      toolIds={toolIds}
+      submenuByToolId={submenuByToolId}
       onToolSelect={(tool) => {
-        if (tool === 'joint' || tool === 'port') {
-          setJointFamilyTool(tool);
-        }
-        if (tool === 'voltage-plus-annotation' || tool === 'voltage-minus-annotation') {
-          setVoltageFamilyTool(tool);
-        }
+        handleToolSelect(tool as DrawingToolId);
         onToolSelect?.(tool);
       }}
       selectedTool={selectedTool}
