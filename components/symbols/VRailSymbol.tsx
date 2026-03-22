@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import { Arrow, Group, Rect } from 'react-konva';
+import { Group, Line, Rect } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
 type SymbolRotation = 0 | 90 | 180 | 270;
 
-interface CurrentAnnotationSymbolProps {
+interface VRailSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
@@ -17,13 +17,12 @@ interface CurrentAnnotationSymbolProps {
   listening?: boolean;
   dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
   onMouseDown?: (e: KonvaEventObject<MouseEvent>) => void;
-  onDoubleClick?: (e: KonvaEventObject<MouseEvent>) => void;
   onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }
 
-export default function CurrentAnnotationSymbol({
+export default function VRailSymbol({
   x,
   y,
   rotation,
@@ -34,11 +33,10 @@ export default function CurrentAnnotationSymbol({
   listening = true,
   dragBoundFunc,
   onMouseDown,
-  onDoubleClick,
   onDragStart,
   onDragMove,
   onDragEnd,
-}: CurrentAnnotationSymbolProps) {
+}: VRailSymbolProps) {
   const lineColor = strokeColor ?? 'black';
 
   return (
@@ -51,24 +49,47 @@ export default function CurrentAnnotationSymbol({
       opacity={opacity}
       dragBoundFunc={dragBoundFunc}
       onMouseDown={onMouseDown}
-      onDblClick={onDoubleClick}
       onDragStart={onDragStart}
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
+      <Rect
+        x={-12}
+        y={-5}
+        width={24}
+        height={20}
+        fill="black"
+        opacity={0}
+        strokeWidth={0}
+        listening={true}
+      />
       {isSelected && (
-        <Rect x={-20} y={-12} width={40} height={24} stroke="#4f80ff" strokeWidth={1} dash={[4, 4]} listening={false} />
+        <Rect
+          x={-12}
+          y={-5}
+          width={24}
+          height={20}
+          stroke="#4f80ff"
+          strokeWidth={1}
+          dash={[4, 4]}
+          cornerRadius={2}
+          listening={false}
+        />
       )}
-      <Arrow
-        points={[-12, 0, 12, 0]}
+      <Line
+        points={[0, 0, 0, 10]}
         stroke={lineColor}
-        fill={lineColor}
         strokeWidth={1}
-        pointerLength={5}
-        pointerWidth={5}
         lineCap="round"
-        lineJoin="miter"
+        lineJoin="round"
+      />
+      <Line
+        points={[-10, 0, 10, 0]}
+        stroke={lineColor}
+        strokeWidth={2}
+        lineCap="round"
+        lineJoin="round"
+        closed
       />
     </Group>
   );

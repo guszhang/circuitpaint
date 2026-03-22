@@ -24,6 +24,9 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
   const [icFamilyTool, setIcFamilyTool] = useState<
     'ic' | 'not-gate' | 'and-gate' | 'or-gate' | 'nand-gate' | 'nor-gate' | 'xor-gate' | 'opamp'
   >('ic');
+  const [groundFamilyTool, setGroundFamilyTool] = useState<'ground' | 'v-rail' | 'vss' | 'chassis-ground'>(
+    'ground'
+  );
   const [sourceFamilyTool, setSourceFamilyTool] = useState<
     'source' | 'current-source' | 'ac-source' | 'controlled-voltage-source' | 'controlled-current-source'
   >('source');
@@ -68,6 +71,14 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
       setIcFamilyTool(selectedTool);
     }
     if (
+      selectedTool === 'ground' ||
+      selectedTool === 'v-rail' ||
+      selectedTool === 'vss' ||
+      selectedTool === 'chassis-ground'
+    ) {
+      setGroundFamilyTool(selectedTool);
+    }
+    if (
       selectedTool === 'source' ||
       selectedTool === 'current-source' ||
       selectedTool === 'ac-source' ||
@@ -91,7 +102,7 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
         switchFamilyTool,
         icFamilyTool,
         sourceFamilyTool,
-        'ground',
+        groundFamilyTool,
       ]}
       submenuByToolId={{
         [resistorFamilyTool]: ['resistor', 'potentiometer'],
@@ -100,6 +111,7 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
         [diodeFamilyTool]: ['diode', 'zener-diode', 'schottky-diode'],
         [switchFamilyTool]: ['switch', 'n-mosfet', 'p-mosfet', 'npn-bjt', 'pnp-bjt', 'spark-gap'],
         [icFamilyTool]: ['ic', 'not-gate', 'and-gate', 'or-gate', 'nand-gate', 'nor-gate', 'xor-gate', 'opamp'],
+        [groundFamilyTool]: ['ground', 'v-rail', 'vss', 'chassis-ground'],
         [sourceFamilyTool]: [
           'source',
           'current-source',
@@ -142,6 +154,9 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
           tool === 'opamp'
         ) {
           setIcFamilyTool(tool);
+        }
+        if (tool === 'ground' || tool === 'v-rail' || tool === 'vss' || tool === 'chassis-ground') {
+          setGroundFamilyTool(tool);
         }
         if (
           tool === 'source' ||

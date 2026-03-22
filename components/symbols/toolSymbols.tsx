@@ -5,6 +5,7 @@ import type { ComponentToolId, DrawingToolId, ToolId } from '../../lib/tools';
 import AcSourceSymbol from './AcSourceSymbol';
 import AndGateSymbol from './AndGateSymbol';
 import CapacitorSymbol from './CapacitorSymbol';
+import ChassisGroundSymbol from './ChassisGroundSymbol';
 import ControlledCurrentSourceSymbol from './ControlledCurrentSourceSymbol';
 import ControlledVoltageSourceSymbol from './ControlledVoltageSourceSymbol';
 import CurrentAnnotationSymbol from './CurrentAnnotationSymbol';
@@ -35,6 +36,8 @@ import TextSymbol from './TextSymbol';
 import TransformerSymbol from './TransformerSymbol';
 import VariableCapacitorSymbol from './VariableCapacitorSymbol';
 import VariableInductorSymbol from './VariableInductorSymbol';
+import VRailSymbol from './VRailSymbol';
+import VssSymbol from './VssSymbol';
 import VoltageMinusAnnotationSymbol from './VoltageMinusAnnotationSymbol';
 import VoltagePlusAnnotationSymbol from './VoltagePlusAnnotationSymbol';
 import WireSymbol from './WireSymbol';
@@ -68,6 +71,9 @@ export const COMPONENT_SYMBOL_BY_TOOL_ID: Record<ComponentToolId, React.Componen
   'xor-gate': XorGateSymbol,
   opamp: OpAmpSymbol,
   ground: GroundSymbol,
+  'v-rail': VRailSymbol,
+  vss: VssSymbol,
+  'chassis-ground': ChassisGroundSymbol,
   source: SourceSymbol,
   'current-source': CurrentSourceSymbol,
   'ac-source': AcSourceSymbol,
