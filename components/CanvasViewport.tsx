@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Stage, Layer, Shape, Rect, Line, Circle, Group, Text, Arrow } from 'react-konva';
+import { Stage, Layer, Shape, Rect, Line, Circle, Group } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
-import katex from 'katex';
 import Latex from './Latex';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
 import { getNextZoomLevel, clampZoom } from '../lib/zoom';
@@ -27,37 +26,18 @@ import {
 } from './canvas/types';
 import { useInteractionTriage } from './canvas/useInteractionTriage';
 import styles from './CanvasViewport.module.css';
-import ResistorSymbol, { type ResistorRotation } from './symbols/ResistorSymbol';
-import PotentiometerSymbol from './symbols/PotentiometerSymbol';
-import CapacitorSymbol from './symbols/CapacitorSymbol';
-import PolarisedCapacitorSymbol from './symbols/PolarisedCapacitorSymbol';
-import VariableCapacitorSymbol from './symbols/VariableCapacitorSymbol';
-import InductorSymbol from './symbols/InductorSymbol';
-import VariableInductorSymbol from './symbols/VariableInductorSymbol';
-import TransformerSymbol from './symbols/TransformerSymbol';
-import DiodeSymbol from './symbols/DiodeSymbol';
-import ZenerDiodeSymbol from './symbols/ZenerDiodeSymbol';
-import SchottkyDiodeSymbol from './symbols/SchottkyDiodeSymbol';
-import SwitchSymbol from './symbols/SwitchSymbol';
-import NMosfetSymbol from './symbols/NMosfetSymbol';
-import PMosfetSymbol from './symbols/PMosfetSymbol';
-import NpnBjtSymbol from './symbols/NpnBjtSymbol';
-import PnpBjtSymbol from './symbols/PnpBjtSymbol';
-import SparkGapSymbol from './symbols/SparkGapSymbol';
-import IcSymbol from './symbols/IcSymbol';
-import NotGateSymbol from './symbols/NotGateSymbol';
-import AndGateSymbol from './symbols/AndGateSymbol';
-import OrGateSymbol from './symbols/OrGateSymbol';
-import NandGateSymbol from './symbols/NandGateSymbol';
-import NorGateSymbol from './symbols/NorGateSymbol';
-import XorGateSymbol from './symbols/XorGateSymbol';
-import OpAmpSymbol from './symbols/OpAmpSymbol';
-import GroundSymbol from './symbols/GroundSymbol';
-import SourceSymbol from './symbols/SourceSymbol';
-import CurrentSourceSymbol from './symbols/CurrentSourceSymbol';
-import AcSourceSymbol from './symbols/AcSourceSymbol';
-import ControlledVoltageSourceSymbol from './symbols/ControlledVoltageSourceSymbol';
-import ControlledCurrentSourceSymbol from './symbols/ControlledCurrentSourceSymbol';
+import { COMPONENT_SYMBOL_BY_TOOL_ID, DRAWING_SYMBOL_BY_TOOL_ID } from './symbols/toolSymbols';
+import {
+  LABEL_FONT_SIZE,
+  LABEL_FONT_FAMILY,
+  LABEL_PADDING_X,
+  LABEL_PADDING_Y,
+  MAX_TEXT_FONT_SIZE,
+  MIN_TEXT_FONT_SIZE,
+  getTextSymbolFontSize,
+  hasLatexSyntax,
+  measureRenderedText,
+} from './symbols/textMetrics';
 
 interface CanvasViewportProps {
   onContextMenu: (x: number, y: number) => void;
@@ -84,12 +64,6 @@ const DRAG_THRESHOLD = 5;
 const CANVAS_FILE_VERSION = 1;
 const rotateBy90 = (rotation: Rotation) => ((rotation + 90) % 360) as Rotation;
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-const LABEL_FONT_SIZE = 12;
-const LABEL_FONT_FAMILY = 'Times New Roman, Georgia, serif';
-const LABEL_PADDING_X = 6;
-const LABEL_PADDING_Y = 4;
-const MIN_TEXT_FONT_SIZE = 6;
-const MAX_TEXT_FONT_SIZE = 48;
 const DEFAULT_STROKE_COLOR = '#000000';
 const DEFAULT_WIRE_STROKE_WIDTH = 1;
 const WIRE_STROKE_WIDTH_OPTIONS = [1, 2, 3, 5] as const;
@@ -101,8 +75,6 @@ const WIRE_DASH_OPTIONS = [
 ] as const;
 const QUICK_COLOR_PALETTE = ['#000000', '#4f80ff', '#e53935', '#fb8c00', '#43a047', '#8e24aa'];
 const ZOOM_BASELINE = 2;
-const LATEX_TOKEN_REGEX = /\$\$([\s\S]+?)\$\$|\$([^$]+?)\$|\\\((.+?)\\\)|\\\[(.+?)\\\]/g;
-const renderedLabelMetricsCache = new Map<string, { width: number; height: number }>();
 
 function normalizeColorForInput(color: string | undefined) {
   if (!color) {
@@ -142,123 +114,11 @@ function getWireDashOptionId(value: number[]) {
   return matched?.id ?? 'solid';
 }
 
-function getDrawingFontSize(drawing: DrawingEntity) {
-  const candidate = drawing.fontSize ?? LABEL_FONT_SIZE;
-  return Math.min(MAX_TEXT_FONT_SIZE, Math.max(MIN_TEXT_FONT_SIZE, candidate));
-}
-
-function measureLabelText(text: string, fontSize = LABEL_FONT_SIZE) {
-  if (typeof document === 'undefined') {
-    return { width: text.length * fontSize * 0.6, height: fontSize * 1.2 };
-  }
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  if (!ctx) {
-    return { width: text.length * fontSize * 0.6, height: fontSize * 1.2 };
-  }
-  ctx.font = `${fontSize}px ${LABEL_FONT_FAMILY}`;
-  const metrics = ctx.measureText(text);
-  const height =
-    metrics.actualBoundingBoxAscent !== undefined && metrics.actualBoundingBoxDescent !== undefined
-      ? metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent
-      : fontSize * 1.2;
-  return { width: metrics.width, height };
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function renderLatexTokenHtml(content: string, display: boolean) {
-  if (!content.trim()) {
-    return '';
-  }
-  try {
-    const html = katex.renderToString(content, {
-      displayMode: display,
-      throwOnError: false,
-      strict: 'ignore',
-      output: 'html',
-    });
-    return display ? `<div class="katex-display">${html}</div>` : html;
-  } catch {
-    return escapeHtml(content);
-  }
-}
-
 function getDrawingDisplayText(drawing: DrawingEntity) {
   if (drawing.toolId === 'text') {
     return drawing.text?.trim() || 'Text';
   }
   return '';
-}
-
-function hasLatexSyntax(text: string) {
-  return /\$[^$]+\$|\\\(.+\\\)|\\\[.+\\\]/.test(text);
-}
-
-function measureRenderedLabelText(text: string, fontSize = LABEL_FONT_SIZE) {
-  if (!hasLatexSyntax(text) || typeof document === 'undefined') {
-    return measureLabelText(text, fontSize);
-  }
-
-  const cacheKey = `${fontSize}::${text}`;
-  const cached = renderedLabelMetricsCache.get(cacheKey);
-  if (cached) {
-    return cached;
-  }
-
-  const htmlParts: string[] = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  LATEX_TOKEN_REGEX.lastIndex = 0;
-  // eslint-disable-next-line no-cond-assign
-  while ((match = LATEX_TOKEN_REGEX.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      htmlParts.push(escapeHtml(text.slice(lastIndex, match.index)));
-    }
-    const latexContent = match[1] ?? match[2] ?? match[3] ?? match[4] ?? '';
-    const display = Boolean(match[1] || match[4]);
-    htmlParts.push(renderLatexTokenHtml(latexContent, display));
-    lastIndex = LATEX_TOKEN_REGEX.lastIndex;
-  }
-  if (lastIndex < text.length) {
-    htmlParts.push(escapeHtml(text.slice(lastIndex)));
-  }
-  if (htmlParts.length === 0) {
-    htmlParts.push(escapeHtml(text));
-  }
-
-  const container = document.createElement('div');
-  container.style.position = 'fixed';
-  container.style.left = '-10000px';
-  container.style.top = '-10000px';
-  container.style.visibility = 'hidden';
-  container.style.pointerEvents = 'none';
-  container.style.display = 'inline-block';
-  container.style.whiteSpace = 'nowrap';
-  container.style.fontFamily = LABEL_FONT_FAMILY;
-  container.style.fontSize = `${fontSize}px`;
-  container.innerHTML = htmlParts.join('');
-
-  document.body.appendChild(container);
-  const rect = container.getBoundingClientRect();
-  document.body.removeChild(container);
-
-  const metrics = {
-    width: rect.width || text.length * fontSize * 0.6,
-    height: rect.height || fontSize * 1.2,
-  };
-  if (renderedLabelMetricsCache.size > 500) {
-    renderedLabelMetricsCache.clear();
-  }
-  renderedLabelMetricsCache.set(cacheKey, metrics);
-  return metrics;
 }
 
 function cloneScene(scene: SceneData): SceneData {
@@ -374,7 +234,7 @@ function getDrawingBounds(drawing: DrawingEntity) {
 
   if (drawing.toolId === 'text') {
     const text = getDrawingDisplayText(drawing);
-    const metrics = measureRenderedLabelText(text, getDrawingFontSize(drawing));
+    const metrics = measureRenderedText(text, getTextSymbolFontSize(drawing.fontSize));
     const width = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
     const height = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
     return {
@@ -417,40 +277,6 @@ function intersects(
   );
 }
 
-const COMPONENT_SYMBOL_BY_TOOL_ID: Record<ComponentToolId, React.ComponentType<any>> = {
-  resistor: ResistorSymbol,
-  potentiometer: PotentiometerSymbol,
-  capacitor: CapacitorSymbol,
-  'polarised-capacitor': PolarisedCapacitorSymbol,
-  'variable-capacitor': VariableCapacitorSymbol,
-  inductor: InductorSymbol,
-  'variable-inductor': VariableInductorSymbol,
-  transformer: TransformerSymbol,
-  diode: DiodeSymbol,
-  'zener-diode': ZenerDiodeSymbol,
-  'schottky-diode': SchottkyDiodeSymbol,
-  switch: SwitchSymbol,
-  'n-mosfet': NMosfetSymbol,
-  'p-mosfet': PMosfetSymbol,
-  'npn-bjt': NpnBjtSymbol,
-  'pnp-bjt': PnpBjtSymbol,
-  'spark-gap': SparkGapSymbol,
-  ic: IcSymbol,
-  'not-gate': NotGateSymbol,
-  'and-gate': AndGateSymbol,
-  'or-gate': OrGateSymbol,
-  'nand-gate': NandGateSymbol,
-  'nor-gate': NorGateSymbol,
-  'xor-gate': XorGateSymbol,
-  opamp: OpAmpSymbol,
-  ground: GroundSymbol,
-  source: SourceSymbol,
-  'current-source': CurrentSourceSymbol,
-  'ac-source': AcSourceSymbol,
-  'controlled-voltage-source': ControlledVoltageSourceSymbol,
-  'controlled-current-source': ControlledCurrentSourceSymbol,
-};
-
 function ComponentGlyph({
   toolId,
   x,
@@ -488,7 +314,7 @@ function ComponentGlyph({
     <SymbolComponent
       x={x}
       y={y}
-      rotation={rotation as ResistorRotation}
+      rotation={rotation}
       isSelected={isSelected}
       draggable={draggable}
       listening={listening}
@@ -530,250 +356,28 @@ function DrawingGlyph({
   onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
 }) {
-  if (drawing.toolId === 'joint') {
-    return (
-      <Group
-        x={drawing.x}
-        y={drawing.y}
-        draggable={draggable}
-        listening={listening}
-        opacity={opacity}
-        dragBoundFunc={dragBoundFunc}
-        onMouseDown={onMouseDown}
-        onDragStart={onDragStart}
-        onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
-      >
-        <Circle x={0} y={0} radius={2} fill={strokeColor} />
-        {isSelected && (
-          <Circle
-            x={0}
-            y={0}
-            radius={5}
-            stroke="#4f80ff"
-            strokeWidth={1}
-            listening={false}
-          />
-        )}
-      </Group>
-    );
-  }
-
-  if (drawing.toolId === 'port') {
-    return (
-      <Group
-        x={drawing.x}
-        y={drawing.y}
-        draggable={draggable}
-        listening={listening}
-        opacity={opacity}
-        dragBoundFunc={dragBoundFunc}
-        onMouseDown={onMouseDown}
-        onDragStart={onDragStart}
-        onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
-      >
-        <Circle x={0} y={0} radius={1.5} fill="white" stroke={strokeColor} strokeWidth={1} />
-        {isSelected && (
-          <Circle
-            x={0}
-            y={0}
-            radius={5}
-            stroke="#4f80ff"
-            strokeWidth={1}
-            listening={false}
-          />
-        )}
-      </Group>
-    );
-  }
-
-  if (drawing.toolId === 'voltage-plus-annotation') {
-    return (
-      <Group
-        x={drawing.x}
-        y={drawing.y}
-        rotation={drawing.rotation}
-        draggable={draggable}
-        listening={listening}
-        opacity={opacity}
-        dragBoundFunc={dragBoundFunc}
-        onMouseDown={onMouseDown}
-        onDblClick={onDoubleClick}
-        onDragStart={onDragStart}
-        onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
-      >
-        <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
-        {isSelected && (
-          <Rect
-            x={-20}
-            y={-12}
-            width={40}
-            height={24}
-            stroke="#4f80ff"
-            strokeWidth={1}
-            dash={[4, 4]}
-            listening={false}
-          />
-        )}
-        <Line points={[-4, 0, 4, 0]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
-        <Line points={[0, -4, 0, 4]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
-      </Group>
-    );
-  }
-
-  if (drawing.toolId === 'voltage-minus-annotation') {
-    return (
-      <Group
-        x={drawing.x}
-        y={drawing.y}
-        rotation={drawing.rotation}
-        draggable={draggable}
-        listening={listening}
-        opacity={opacity}
-        dragBoundFunc={dragBoundFunc}
-        onMouseDown={onMouseDown}
-        onDblClick={onDoubleClick}
-        onDragStart={onDragStart}
-        onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
-      >
-        <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
-        {isSelected && (
-          <Rect
-            x={-20}
-            y={-12}
-            width={40}
-            height={24}
-            stroke="#4f80ff"
-            strokeWidth={1}
-            dash={[4, 4]}
-            listening={false}
-          />
-        )}
-        <Line points={[-4, 0, 4, 0]} stroke={strokeColor} strokeWidth={1.8} lineCap="round" />
-      </Group>
-    );
-  }
-
-  if (drawing.toolId === 'current-annotation') {
-    return (
-      <Group
-        x={drawing.x}
-        y={drawing.y}
-        rotation={drawing.rotation}
-        draggable={draggable}
-        listening={listening}
-        opacity={opacity}
-        dragBoundFunc={dragBoundFunc}
-        onMouseDown={onMouseDown}
-        onDblClick={onDoubleClick}
-        onDragStart={onDragStart}
-        onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
-      >
-        <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
-        {isSelected && (
-          <Rect
-            x={-20}
-            y={-12}
-            width={40}
-            height={24}
-            stroke="#4f80ff"
-            strokeWidth={1}
-            dash={[4, 4]}
-            listening={false}
-          />
-        )}
-        <Arrow
-          points={[-12, 0, 12, 0]}
-          stroke={strokeColor}
-          fill={strokeColor}
-          strokeWidth={1.8}
-          pointerLength={5}
-          pointerWidth={5}
-          lineCap="round"
-          lineJoin="round"
-        />
-      </Group>
-    );
-  }
-
-  const labelText = getDrawingDisplayText(drawing);
-  const labelFontSize = getDrawingFontSize(drawing);
-  const labelMetrics = measureRenderedLabelText(labelText, labelFontSize);
-  const labelBox = labelMetrics
-    ? {
-        width: Math.max(24, labelMetrics.width + LABEL_PADDING_X * 2),
-        height: Math.max(16, labelMetrics.height + LABEL_PADDING_Y * 2),
-      }
-    : null;
-  const labelBoxX = labelBox ? -labelBox.width / 2 : -18;
-  const labelBoxY = labelBox ? -labelBox.height / 2 : -10;
-  const showFrame = drawing.toolId === 'text' && drawing.border === true;
+  const SymbolComponent = DRAWING_SYMBOL_BY_TOOL_ID[drawing.toolId];
 
   return (
-    <Group
+    <SymbolComponent
       x={drawing.x}
       y={drawing.y}
       rotation={drawing.rotation}
+      isSelected={isSelected}
+      text={drawing.toolId === 'text' ? getDrawingDisplayText(drawing) : undefined}
+      border={drawing.toolId === 'text' ? drawing.border === true : undefined}
+      fontSize={drawing.toolId === 'text' ? getTextSymbolFontSize(drawing.fontSize) : undefined}
       draggable={draggable}
       listening={listening}
+      strokeColor={strokeColor}
       opacity={opacity}
       dragBoundFunc={dragBoundFunc}
       onMouseDown={onMouseDown}
-      onDblClick={onDoubleClick}
+      onDoubleClick={onDoubleClick}
       onDragStart={onDragStart}
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
-    >
-      <Rect
-        x={labelBox ? labelBoxX - 2 : -20}
-        y={labelBox ? labelBoxY - 2 : -12}
-        width={labelBox ? labelBox.width + 4 : 40}
-        height={labelBox ? labelBox.height + 4 : 24}
-        fill="black"
-        opacity={0}
-      />
-      {isSelected && (
-        <Rect
-          x={labelBox ? labelBoxX - 2 : -20}
-          y={labelBox ? labelBoxY - 2 : -12}
-          width={labelBox ? labelBox.width + 4 : 40}
-          height={labelBox ? labelBox.height + 4 : 24}
-          stroke="#4f80ff"
-          strokeWidth={1}
-          dash={[4, 4]}
-          listening={false}
-        />
-      )}
-      {showFrame && (
-        <Rect
-          x={labelBox ? labelBoxX : -18}
-          y={labelBox ? labelBoxY : -10}
-          width={labelBox ? labelBox.width : 36}
-          height={labelBox ? labelBox.height : 20}
-          stroke={strokeColor}
-          strokeWidth={1.2}
-        />
-      )}
-      {!listening && (
-        <Text
-          x={labelBox ? labelBoxX + LABEL_PADDING_X : -17}
-          y={labelBox ? labelBoxY + LABEL_PADDING_Y : -7}
-          width={labelBox ? labelBox.width - LABEL_PADDING_X * 2 : 34}
-          height={labelBox ? labelBox.height - LABEL_PADDING_Y * 2 : 14}
-          fontSize={labelFontSize}
-          fontFamily={LABEL_FONT_FAMILY}
-          align="center"
-          verticalAlign="middle"
-          text={labelText}
-          fill={strokeColor}
-          listening={false}
-        />
-      )}
-    </Group>
+    />
   );
 }
 
@@ -916,7 +520,7 @@ export default function CanvasViewport({
     return drawing;
   }, [drawings, singleSelection]);
   const selectedTextFontSize = selectedTextDrawing
-    ? getDrawingFontSize(selectedTextDrawing)
+    ? getTextSymbolFontSize(selectedTextDrawing.fontSize)
     : LABEL_FONT_SIZE;
   const selectedTextBorder = selectedTextDrawing?.border === true;
   const selectedWire = useMemo(() => {
@@ -1067,7 +671,7 @@ export default function CanvasViewport({
       }
       const nextFontSize = Math.min(
         MAX_TEXT_FONT_SIZE,
-        Math.max(MIN_TEXT_FONT_SIZE, getDrawingFontSize(selectedTextDrawing) + delta)
+        Math.max(MIN_TEXT_FONT_SIZE, getTextSymbolFontSize(selectedTextDrawing.fontSize) + delta)
       );
       updateScene((prev) => {
         let changed = false;
@@ -1075,7 +679,7 @@ export default function CanvasViewport({
           if (drawing.id !== selectedTextDrawing.id || drawing.toolId !== 'text') {
             return drawing;
           }
-          if (getDrawingFontSize(drawing) === nextFontSize) {
+          if (getTextSymbolFontSize(drawing.fontSize) === nextFontSize) {
             return drawing;
           }
           changed = true;
@@ -2365,8 +1969,8 @@ export default function CanvasViewport({
         {textDrawings.map((drawing) => {
           const content = getDrawingDisplayText(drawing);
           const isLatex = hasLatexSyntax(content);
-          const fontSize = getDrawingFontSize(drawing);
-          const metrics = measureRenderedLabelText(content, fontSize);
+          const fontSize = getTextSymbolFontSize(drawing.fontSize);
+          const metrics = measureRenderedText(content, fontSize);
           const boxWidth = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
           const boxHeight = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
           const color = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
