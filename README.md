@@ -46,6 +46,7 @@ CircuitPaint is a lightweight schematic drawing app built with Next.js, React, T
 
 - `W`: select wire tool.
 - `R`: rotate active placement or selected components/drawings.
+- `E`: mirror selected items horizontally.
 - `G`: toggle grid visibility.
 - `Esc`: cancel paste mode, finalize wire draft, and/or clear active tool (context-dependent).
 - `Ctrl/Cmd+Z`: undo.
@@ -64,6 +65,7 @@ CircuitPaint is a lightweight schematic drawing app built with Next.js, React, T
 ## File Format Notes
 
 - Scene data is stored as JSON with `components`, `drawings`, and `wires`.
+- Components support optional `flipped` for horizontal mirroring.
 - Wires support optional style fields:
 - `strokeColor`
 - `strokeWidth`

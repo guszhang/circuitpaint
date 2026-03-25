@@ -57,6 +57,9 @@ function parseCanvasFile(raw: unknown): CanvasFile {
     if (!isComponentTool(item.toolId)) {
       throw new Error('Unknown component tool.');
     }
+    if (item.flipped !== undefined && !isBoolean(item.flipped)) {
+      throw new Error('Invalid component flipped value.');
+    }
     if (item.strokeColor !== undefined && !isString(item.strokeColor)) {
       throw new Error('Invalid component color.');
     }
@@ -66,6 +69,7 @@ function parseCanvasFile(raw: unknown): CanvasFile {
       x: item.x,
       y: item.y,
       rotation: item.rotation,
+      flipped: item.flipped,
       strokeColor: item.strokeColor,
     };
   });
@@ -93,6 +97,9 @@ function parseCanvasFile(raw: unknown): CanvasFile {
     if (item.strokeColor !== undefined && !isString(item.strokeColor)) {
       throw new Error('Invalid drawing color.');
     }
+    if (item.strokeWidth !== undefined && !isNumber(item.strokeWidth)) {
+      throw new Error('Invalid drawing thickness.');
+    }
     if (item.border !== undefined && !isBoolean(item.border)) {
       throw new Error('Invalid drawing border value.');
     }
@@ -108,6 +115,7 @@ function parseCanvasFile(raw: unknown): CanvasFile {
       rotation: item.rotation,
       text: item.text,
       strokeColor: item.strokeColor,
+      strokeWidth: item.strokeWidth,
       border: normalizedBorder,
       fontSize: item.fontSize,
     };

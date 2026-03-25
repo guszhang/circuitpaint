@@ -34,6 +34,8 @@ const TOOL_DEFINITIONS = [
   { id: 'controlled-voltage-source', label: 'Controlled Voltage Source', group: 'component' },
   { id: 'controlled-current-source', label: 'Controlled Current Source', group: 'component' },
   { id: 'joint', label: 'Joint', group: 'drawing' },
+  { id: 'bridge', label: 'Bridge', group: 'drawing' },
+  { id: 'half-circle', label: 'Half-circle', group: 'drawing' },
   { id: 'port', label: 'Port', group: 'drawing' },
   { id: 'wire', label: 'Wire', group: 'drawing' },
   { id: 'text', label: 'Text', group: 'drawing' },
@@ -107,7 +109,12 @@ export const COMPONENT_TOOL_FAMILIES = [
 ] as const satisfies readonly ToolFamilyDefinition<ComponentToolId>[];
 
 export const DRAWING_TOOL_FAMILIES = [
-  { key: 'joint-family', group: 'drawing', defaultToolId: 'joint', toolIds: ['joint', 'port'] },
+  {
+    key: 'joint-family',
+    group: 'drawing',
+    defaultToolId: 'joint',
+    toolIds: ['joint', 'port', 'bridge', 'half-circle'],
+  },
   { key: 'wire-family', group: 'drawing', defaultToolId: 'wire', toolIds: ['wire'] },
   { key: 'text-family', group: 'drawing', defaultToolId: 'text', toolIds: ['text'] },
   {

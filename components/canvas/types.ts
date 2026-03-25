@@ -11,6 +11,7 @@ export interface ComponentEntity {
   x: number;
   y: number;
   rotation: Rotation;
+  flipped?: boolean;
   strokeColor?: string;
 }
 
@@ -22,6 +23,7 @@ export interface DrawingEntity {
   rotation: Rotation;
   text?: string;
   strokeColor?: string;
+  strokeWidth?: number;
   border?: boolean;
   fontSize?: number;
 }

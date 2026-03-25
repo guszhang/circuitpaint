@@ -4,6 +4,7 @@ import React from 'react';
 import type { ComponentToolId, DrawingToolId, ToolId } from '../../lib/tools';
 import AcSourceSymbol from './AcSourceSymbol';
 import AndGateSymbol from './AndGateSymbol';
+import BridgeSymbol from './BridgeSymbol';
 import CapacitorSymbol from './CapacitorSymbol';
 import ChassisGroundSymbol from './ChassisGroundSymbol';
 import ControlledCurrentSourceSymbol from './ControlledCurrentSourceSymbol';
@@ -12,6 +13,7 @@ import CurrentAnnotationSymbol from './CurrentAnnotationSymbol';
 import CurrentSourceSymbol from './CurrentSourceSymbol';
 import DiodeSymbol from './DiodeSymbol';
 import GroundSymbol from './GroundSymbol';
+import HalfCircleSymbol from './HalfCircleSymbol';
 import IcSymbol from './IcSymbol';
 import InductorSymbol from './InductorSymbol';
 import JointSymbol from './JointSymbol';
@@ -80,6 +82,8 @@ const TOOL_SYMBOL_COMPONENT_BY_ID: Record<ToolId, React.ComponentType<any>> = {
   'controlled-voltage-source': ControlledVoltageSourceSymbol,
   'controlled-current-source': ControlledCurrentSourceSymbol,
   'joint': JointSymbol,
+  'bridge': BridgeSymbol,
+  'half-circle': HalfCircleSymbol,
   'port': PortSymbol,
   'wire': WireSymbol,
   'text': TextSymbol,
@@ -102,6 +106,8 @@ export function getToolSymbolComponent(toolId: ToolId) {
 
 const TOOL_ICON_SCALE_BY_ID: Partial<Record<ToolId, number>> = {
   joint: 1.6,
+  bridge: 0.9,
+  'half-circle': 1.1,
   port: 1.6,
   wire: 1,
   text: 0.42,
@@ -112,6 +118,16 @@ export function getToolSymbolIconScale(toolId: ToolId) {
 }
 
 export function getToolSymbolPreviewProps(toolId: ToolId) {
+  if (toolId === 'bridge') {
+    return {
+      x: -5,
+    };
+  }
+  if (toolId === 'half-circle') {
+    return {
+      x: -2.5,
+    };
+  }
   if (toolId === 'text') {
     return {
       text: 'Text',

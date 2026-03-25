@@ -98,6 +98,10 @@ function normalizeWireStrokeWidth(value: number | undefined) {
     : DEFAULT_WIRE_STROKE_WIDTH;
 }
 
+function isBridgeDrawingTool(toolId: NonWireDrawingToolId | DrawingEntity['toolId']) {
+  return toolId === 'bridge' || toolId === 'half-circle';
+}
+
 function normalizeWireDash(value: number[] | undefined) {
   if (!Array.isArray(value) || value.length === 0) {
     return [] as number[];
@@ -133,6 +137,17 @@ function cloneScene(scene: SceneData): SceneData {
   };
 }
 
+function getBoundsCenter(bounds: { minX: number; maxX: number; minY: number; maxY: number }) {
+  return {
+    x: (bounds.minX + bounds.maxX) / 2,
+    y: (bounds.minY + bounds.maxY) / 2,
+  };
+}
+
+function mirrorX(x: number, centerX: number) {
+  return centerX * 2 - x;
+}
+
 function toCanvasFile(scene: SceneData): CanvasFile {
   const clone = cloneScene(scene);
   return {
@@ -145,8 +160,13 @@ function toCanvasFile(scene: SceneData): CanvasFile {
 
 function fromCanvasFile(file: CanvasFile): SceneData {
   return {
-    components: file.components.map((component) => ({ ...component })),
-    drawings: file.drawings.map((drawing) => ({ ...drawing })),
+    components: file.components.map((component) => ({ ...component, flipped: component.flipped === true })),
+    drawings: file.drawings.map((drawing) => ({
+      ...drawing,
+      strokeWidth: isBridgeDrawingTool(drawing.toolId)
+        ? normalizeWireStrokeWidth(drawing.strokeWidth)
+        : drawing.strokeWidth,
+    })),
     wires: file.wires.map((wire) => ({
       ...wire,
       strokeWidth: normalizeWireStrokeWidth(wire.strokeWidth),
@@ -265,6 +285,33 @@ function getWireBounds(wire: WireEntity) {
   };
 }
 
+function getSelectionBounds(
+  scene: SceneData,
+  selection: { componentIds: Set<string>; drawingIds: Set<string>; wireIds: Set<string> }
+) {
+  const boundsList = [
+    ...scene.components
+      .filter((component) => selection.componentIds.has(component.id))
+      .map(getComponentBounds),
+    ...scene.drawings.filter((drawing) => selection.drawingIds.has(drawing.id)).map(getDrawingBounds),
+    ...scene.wires.filter((wire) => selection.wireIds.has(wire.id)).map(getWireBounds),
+  ];
+
+  if (boundsList.length === 0) {
+    return null;
+  }
+
+  return boundsList.reduce(
+    (acc, bounds) => ({
+      minX: Math.min(acc.minX, bounds.minX),
+      maxX: Math.max(acc.maxX, bounds.maxX),
+      minY: Math.min(acc.minY, bounds.minY),
+      maxY: Math.max(acc.maxY, bounds.maxY),
+    }),
+    boundsList[0]
+  );
+}
+
 function intersects(
   bounds: { minX: number; maxX: number; minY: number; maxY: number },
   rect: { minX: number; maxX: number; minY: number; maxY: number }
@@ -282,6 +329,7 @@ function ComponentGlyph({
   x,
   y,
   rotation,
+  flipped = false,
   isSelected,
   draggable = false,
   listening = true,
@@ -297,6 +345,7 @@ function ComponentGlyph({
   x: number;
   y: number;
   rotation: Rotation;
+  flipped?: boolean;
   isSelected: boolean;
   draggable?: boolean;
   listening?: boolean;
@@ -311,21 +360,23 @@ function ComponentGlyph({
   const SymbolComponent = getComponentSymbolComponent(toolId);
 
   return (
-    <SymbolComponent
-      x={x}
-      y={y}
-      rotation={rotation}
-      isSelected={isSelected}
-      draggable={draggable}
-      listening={listening}
-      strokeColor={strokeColor}
-      opacity={opacity}
-      onMouseDown={onMouseDown}
-      dragBoundFunc={dragBoundFunc}
-      onDragStart={onDragStart}
-      onDragMove={onDragMove}
-      onDragEnd={onDragEnd}
-    />
+    <Group x={x} y={y} rotation={rotation} scaleX={flipped ? -1 : 1}>
+      <SymbolComponent
+        x={0}
+        y={0}
+        rotation={0}
+        isSelected={isSelected}
+        draggable={draggable}
+        listening={listening}
+        strokeColor={strokeColor}
+        opacity={opacity}
+        onMouseDown={onMouseDown}
+        dragBoundFunc={dragBoundFunc}
+        onDragStart={onDragStart}
+        onDragMove={onDragMove}
+        onDragEnd={onDragEnd}
+      />
+    </Group>
   );
 }
 
@@ -365,6 +416,7 @@ function DrawingGlyph({
       rotation={drawing.rotation}
       isSelected={isSelected}
       text={drawing.toolId === 'text' ? getDrawingDisplayText(drawing) : undefined}
+      strokeWidth={isBridgeDrawingTool(drawing.toolId) ? normalizeWireStrokeWidth(drawing.strokeWidth) : undefined}
       border={drawing.toolId === 'text' ? drawing.border === true : undefined}
       fontSize={drawing.toolId === 'text' ? getTextSymbolFontSize(drawing.fontSize) : undefined}
       draggable={draggable}
@@ -397,6 +449,7 @@ export default function CanvasViewport({
   const [mouseWorldPos, setMouseWorldPos] = useState<Point>({ x: 0, y: 0 });
   const [hoverPoint, setHoverPoint] = useState<Point | null>(null);
   const [placementRotation, setPlacementRotation] = useState<Rotation>(0);
+  const [placementFlipped, setPlacementFlipped] = useState(false);
 
   const [scene, setScene] = useState<SceneData>({
     components: [],
@@ -404,6 +457,7 @@ export default function CanvasViewport({
     wires: [],
   });
   const [wireStrokeWidth, setWireStrokeWidth] = useState<number>(DEFAULT_WIRE_STROKE_WIDTH);
+  const [drawingStrokeWidth, setDrawingStrokeWidth] = useState<number>(DEFAULT_WIRE_STROKE_WIDTH);
   const [wireDash, setWireDash] = useState<number[]>([]);
   const [isWireWidthMenuOpen, setIsWireWidthMenuOpen] = useState(false);
   const [isWireDashMenuOpen, setIsWireDashMenuOpen] = useState(false);
@@ -530,6 +584,17 @@ export default function CanvasViewport({
     return wires.find((item) => item.id === singleSelection.id) ?? null;
   }, [singleSelection, wires]);
   const selectedWireStrokeWidth = normalizeWireStrokeWidth(selectedWire?.strokeWidth);
+  const selectedBridgeDrawing = useMemo(() => {
+    if (singleSelection?.kind !== 'drawing') {
+      return null;
+    }
+    const drawing = drawings.find((item) => item.id === singleSelection.id);
+    if (!drawing || !isBridgeDrawingTool(drawing.toolId)) {
+      return null;
+    }
+    return drawing;
+  }, [drawings, singleSelection]);
+  const selectedBridgeStrokeWidth = normalizeWireStrokeWidth(selectedBridgeDrawing?.strokeWidth);
   const selectedWireDash = useMemo(() => normalizeWireDash(selectedWire?.dash), [selectedWire?.dash]);
   const selectedWireDashOptionId = useMemo(
     () => getWireDashOptionId(selectedWireDash),
@@ -738,6 +803,33 @@ export default function CanvasViewport({
       });
     },
     [selectedWire, updateScene]
+  );
+
+  const applySelectedBridgeStrokeWidth = useCallback(
+    (strokeWidth: number) => {
+      if (!selectedBridgeDrawing) {
+        return;
+      }
+      const nextStrokeWidth = normalizeWireStrokeWidth(strokeWidth);
+      updateScene((prev) => {
+        let changed = false;
+        const drawingsNext = prev.drawings.map((drawing) => {
+          if (drawing.id !== selectedBridgeDrawing.id) {
+            return drawing;
+          }
+          if (!isBridgeDrawingTool(drawing.toolId)) {
+            return drawing;
+          }
+          if (normalizeWireStrokeWidth(drawing.strokeWidth) === nextStrokeWidth) {
+            return drawing;
+          }
+          changed = true;
+          return { ...drawing, strokeWidth: nextStrokeWidth };
+        });
+        return changed ? { ...prev, drawings: drawingsNext } : prev;
+      });
+    },
+    [selectedBridgeDrawing, updateScene]
   );
 
   const captureDragHistory = useCallback(() => {
@@ -1061,6 +1153,7 @@ export default function CanvasViewport({
         x: component.x - anchor.x,
         y: component.y - anchor.y,
         rotation: component.rotation,
+        flipped: component.flipped === true,
         strokeColor: component.strokeColor,
       })),
       drawings: selectedDrawings.map((drawing) => ({
@@ -1070,6 +1163,7 @@ export default function CanvasViewport({
         rotation: drawing.rotation,
         text: drawing.text,
         strokeColor: drawing.strokeColor,
+        strokeWidth: drawing.strokeWidth,
         border: drawing.border,
         fontSize: drawing.fontSize,
       })),
@@ -1137,6 +1231,62 @@ export default function CanvasViewport({
   const serializeScene = useCallback(() => {
     return toCanvasFile(sceneRef.current);
   }, []);
+
+  const mirrorSelection = useCallback(() => {
+    const selection = {
+      componentIds: new Set(selectedComponentIdsRef.current),
+      drawingIds: new Set(selectedDrawingIdsRef.current),
+      wireIds: new Set(selectedWireIdsRef.current),
+    };
+
+    if (
+      selection.componentIds.size === 0 &&
+      selection.drawingIds.size === 0 &&
+      selection.wireIds.size === 0
+    ) {
+      return false;
+    }
+    const bounds = getSelectionBounds(sceneRef.current, selection);
+    if (!bounds) {
+      return false;
+    }
+    const center = getBoundsCenter(bounds);
+
+    updateScene((prev) => ({
+      ...prev,
+      components: prev.components.map((component) =>
+        selection.componentIds.has(component.id)
+          ? {
+              ...component,
+              x: mirrorX(component.x, center.x),
+              flipped: component.flipped !== true,
+            }
+          : component
+      ),
+      drawings: prev.drawings.map((drawing) =>
+        selection.drawingIds.has(drawing.id)
+          ? { ...drawing, x: mirrorX(drawing.x, center.x) }
+          : drawing
+      ),
+      wires: prev.wires.map((wire) => {
+        if (!selection.wireIds.has(wire.id)) {
+          return wire;
+        }
+        const mirroredPoints = getAbsoluteWirePoints(wire).map((point) => ({
+          x: mirrorX(point.x, center.x),
+          y: point.y,
+        }));
+        return makeWireFromAbsolutePoints(
+          wire.id,
+          mirroredPoints,
+          wire.strokeColor ?? DEFAULT_STROKE_COLOR,
+          normalizeWireStrokeWidth(wire.strokeWidth),
+          normalizeWireDash(wire.dash)
+        );
+      }),
+    }));
+    return true;
+  }, [updateScene]);
 
   const loadScene = useCallback(
     (file: CanvasFile) => {
@@ -1322,21 +1472,23 @@ export default function CanvasViewport({
         const snapped = getSnappedWorld(pointer, camera);
 
         if (activeComponentTool) {
+          const componentId = makeId('component');
           updateScene((prev) => ({
             ...prev,
             components: [
               ...prev.components,
               {
-                id: makeId('component'),
+                id: componentId,
                 toolId: activeComponentTool,
                 x: snapped.x,
                 y: snapped.y,
                 rotation: placementRotation,
+                flipped: placementFlipped,
                 strokeColor: DEFAULT_STROKE_COLOR,
               },
             ],
           }));
-          clearSelection();
+          applySelection({ componentIds: [componentId], drawingIds: [], wireIds: [] });
           return;
         }
 
@@ -1369,6 +1521,7 @@ export default function CanvasViewport({
                 rotation: placementRotation,
                 text: defaultText,
                 strokeColor: DEFAULT_STROKE_COLOR,
+                strokeWidth: isBridgeDrawingTool(activeDrawingTool) ? drawingStrokeWidth : undefined,
                 border: false,
                 fontSize: LABEL_FONT_SIZE,
               },
@@ -1678,27 +1831,42 @@ export default function CanvasViewport({
       }
 
       if (key === 'r') {
-        if (selectedTool) {
-          event.preventDefault();
-          setPlacementRotation((prev) => rotateBy90(prev));
-          return;
-        }
-
-        if (selectedComponentIds.length > 0 || selectedDrawingIds.length > 0) {
+        if (
+          selectedComponentIdsRef.current.length > 0 ||
+          selectedDrawingIdsRef.current.length > 0
+        ) {
           event.preventDefault();
           updateScene((prev) => ({
             ...prev,
             components: prev.components.map((component) =>
-              selectedComponentSet.has(component.id)
+              selectedComponentIdsRef.current.includes(component.id)
                 ? { ...component, rotation: rotateBy90(component.rotation) }
                 : component
             ),
             drawings: prev.drawings.map((drawing) =>
-              selectedDrawingSet.has(drawing.id)
+              selectedDrawingIdsRef.current.includes(drawing.id)
                 ? { ...drawing, rotation: rotateBy90(drawing.rotation) }
                 : drawing
             ),
           }));
+          return;
+        }
+
+        if (selectedTool) {
+          event.preventDefault();
+          setPlacementRotation((prev) => rotateBy90(prev));
+        }
+        return;
+      }
+
+      if (key === 'e') {
+        if (mirrorSelection()) {
+          event.preventDefault();
+          return;
+        }
+        if (activeComponentTool) {
+          event.preventDefault();
+          setPlacementFlipped((prev) => !prev);
         }
       }
     };
@@ -1711,6 +1879,7 @@ export default function CanvasViewport({
     cutSelection,
     deleteSelection,
     isPasteMode,
+    mirrorSelection,
     onToggleGrid,
     onToolComplete,
     pasteSelection,
@@ -1726,8 +1895,10 @@ export default function CanvasViewport({
   ]);
 
   useEffect(() => {
-    if (selectedTool !== 'wire') {
+    if (selectedTool !== 'wire' && !isBridgeDrawingTool(selectedTool as NonWireDrawingToolId)) {
       setIsWireWidthMenuOpen(false);
+    }
+    if (selectedTool !== 'wire') {
       setIsWireDashMenuOpen(false);
     }
 
@@ -1738,6 +1909,7 @@ export default function CanvasViewport({
     if (!selectedTool && !isPasteMode) {
       setHoverPoint(null);
       setPlacementRotation(0);
+      setPlacementFlipped(false);
       setWireDraft(null);
     }
 
@@ -1795,6 +1967,7 @@ export default function CanvasViewport({
               x={component.x}
               y={component.y}
               rotation={component.rotation}
+              flipped={component.flipped === true}
               strokeColor={component.strokeColor ?? DEFAULT_STROKE_COLOR}
               isSelected={selectedComponentSet.has(component.id)}
               onMouseDown={handleEntityMouseDown('component', component.id)}
@@ -1807,6 +1980,7 @@ export default function CanvasViewport({
               x={hoverPoint.x}
               y={hoverPoint.y}
               rotation={placementRotation}
+              flipped={placementFlipped}
               isSelected={false}
               listening={false}
               strokeColor="#888888"
@@ -1822,6 +1996,7 @@ export default function CanvasViewport({
                 x={component.x + hoverPoint.x}
                 y={component.y + hoverPoint.y}
                 rotation={component.rotation}
+                flipped={component.flipped === true}
                 isSelected={false}
                 listening={false}
                 strokeColor="#888888"
@@ -1937,6 +2112,9 @@ export default function CanvasViewport({
                 x: hoverPoint.x,
                 y: hoverPoint.y,
                 rotation: placementRotation,
+                strokeWidth: isBridgeDrawingTool(activeDrawingTool as NonWireDrawingToolId)
+                  ? drawingStrokeWidth
+                  : undefined,
               }}
               isSelected={false}
               listening={false}
@@ -2102,6 +2280,44 @@ export default function CanvasViewport({
         </div>
       )}
 
+      {(selectedTool === 'bridge' || selectedTool === 'half-circle') && (
+        <div className={styles.bottomEditorBar}>
+          <span className={styles.editorLabel}>
+            {selectedTool === 'bridge' ? 'Bridge' : 'Half-circle'}
+          </span>
+          <div className={styles.menuGroup}>
+            <button
+              type="button"
+              className={styles.menuButton}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsWireWidthMenuOpen((prev) => !prev);
+              }}
+            >
+              Thickness: {drawingStrokeWidth}
+            </button>
+            {isWireWidthMenuOpen && (
+              <div className={styles.upwardMenu} onPointerDown={(event) => event.stopPropagation()}>
+                {WIRE_STROKE_WIDTH_OPTIONS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`${styles.menuItemButton} ${drawingStrokeWidth === value ? styles.menuItemButtonActive : ''}`}
+                    onClick={() => {
+                      setDrawingStrokeWidth(value);
+                      setIsWireWidthMenuOpen(false);
+                    }}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {singleSelection && !selectedTool && !isPasteMode && (
         <div className={styles.bottomEditorBar}>
           <span className={styles.editorLabel}>Color</span>
@@ -2128,6 +2344,39 @@ export default function CanvasViewport({
               aria-label="Pick custom color"
             />
           </label>
+          {selectedBridgeDrawing && (
+            <div className={styles.menuGroup}>
+              <button
+                type="button"
+                className={styles.menuButton}
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsWireDashMenuOpen(false);
+                  setIsWireWidthMenuOpen((prev) => !prev);
+                }}
+              >
+                Thickness: {selectedBridgeStrokeWidth}
+              </button>
+              {isWireWidthMenuOpen && (
+                <div className={styles.upwardMenu} onPointerDown={(event) => event.stopPropagation()}>
+                  {WIRE_STROKE_WIDTH_OPTIONS.map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={`${styles.menuItemButton} ${selectedBridgeStrokeWidth === value ? styles.menuItemButtonActive : ''}`}
+                      onClick={() => {
+                        applySelectedBridgeStrokeWidth(value);
+                        setIsWireWidthMenuOpen(false);
+                      }}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {selectedWire && (
             <>
               <div className={styles.menuGroup}>

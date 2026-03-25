@@ -132,7 +132,7 @@ export default function MenuBar({
             </button>
           </div>
           <div className={styles.helpBody}>
-            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.2</div>
+            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.4</div>
 
             <div className={styles.helpMeta}>
               CircuitPaint is a lightweight schematic drawing tool developed to provide
@@ -146,6 +146,7 @@ export default function MenuBar({
               <li>Click and drag to select multiple components.</li>
               <li><strong>Long press on a component</strong> to access additional options.</li>
               <li>Press <strong>R</strong> to rotate the selected component(s).</li>
+              <li>Press <strong>E</strong> to mirror the selected items horizontally.</li>
               <li>Press <strong>G</strong> to toggle grid visibility.</li>
               <li>Press <strong>W</strong> to select the wire tool.</li>
               <li>Press <strong>Esc</strong> to deselect the current tool.</li>
