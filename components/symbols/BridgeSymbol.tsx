@@ -53,12 +53,12 @@ export default function BridgeSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-2} y={-12} width={14} height={24} fill="black" opacity={0} strokeWidth={0} />
+      <Rect x={-2} y={-12} width={10} height={24} fill="black" opacity={0} strokeWidth={0} />
       {isSelected && (
         <Rect
-          x={-4}
+          x={-2}
           y={-14}
-          width={18}
+          width={10}
           height={28}
           stroke="#4f80ff"
           strokeWidth={1}
@@ -66,11 +66,25 @@ export default function BridgeSymbol({
           listening={false}
         />
       )}
+      <Line
+        points={[0, -10, 0, -3]}
+        stroke={lineColor}
+        strokeWidth={strokeWidth}
+        lineCap="round"
+        lineJoin="round"
+      />
+      <Line
+        points={[0, 3, 0, 10]}
+        stroke={lineColor}
+        strokeWidth={strokeWidth}
+        lineCap="round"
+        lineJoin="round"
+      />
       <Arc
         x={0}
         y={0}
-        innerRadius={10}
-        outerRadius={10}
+        innerRadius={3}
+        outerRadius={3}
         angle={180}
         rotation={-90}
         stroke={lineColor}
