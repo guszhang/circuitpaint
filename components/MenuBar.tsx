@@ -135,7 +135,7 @@ export default function MenuBar({
             </button>
           </div>
           <div className={styles.helpBody}>
-            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.5</div>
+            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.6</div>
 
             <div className={styles.helpMeta}>
               CircuitPaint is a lightweight schematic drawing tool developed to provide
@@ -153,9 +153,9 @@ export default function MenuBar({
               <li>Press <strong>G</strong> to toggle grid visibility.</li>
               <li>Press <strong>W</strong> to select the wire tool.</li>
               <li>Press <strong>Esc</strong> to deselect the current tool.</li>
-              <li>Use <strong>Ctrl/Cmd + C</strong>, <strong>X</strong>, and <strong>V</strong> to copy, cut, and paste.</li>
+              <li>Use <strong>Ctrl/Cmd + C</strong>, <strong>X</strong>, and <strong>V</strong> to copy, cut, and paste. Selected items can be pasted into Word and similar apps as a rasterised picture.</li>
               <li>Use <strong>Ctrl/Cmd + S</strong> to export the schematic as a JSON file.</li>
-              <li>Use <strong>File → Export as SVG</strong> to generate a self-contained SVG.</li>
+              <li>Use <strong>File → Export as SVG</strong> to export the canvas as a self-contained SVG.</li>
               <li>Use mouse wheel to zoom in and out.</li>
               <li>Use right-click drag to pan the canvas.</li>
               <li>Use your system’s screenshot function to capture and save the schematic image.</li>
