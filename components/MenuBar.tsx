@@ -15,6 +15,7 @@ interface MenuBarProps {
   onEditDelete?: () => void;
   onFileOpen?: () => void;
   onFileSave?: () => void;
+  onFileExportSvg?: () => void;
 }
 
 type MenuItem = string | { label: string; onSelect?: () => void };
@@ -31,6 +32,7 @@ export default function MenuBar({
   onEditDelete,
   onFileOpen,
   onFileSave,
+  onFileExportSvg,
 }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [showHelpPopup, setShowHelpPopup] = useState(true);
@@ -40,6 +42,7 @@ export default function MenuBar({
     File: [
       { label: 'Open', onSelect: onFileOpen },
       { label: 'Save', onSelect: onFileSave },
+      { label: 'Export as SVG', onSelect: onFileExportSvg },
     ],
     Edit: [
       { label: 'Undo', onSelect: onEditUndo },
@@ -152,6 +155,7 @@ export default function MenuBar({
               <li>Press <strong>Esc</strong> to deselect the current tool.</li>
               <li>Use <strong>Ctrl/Cmd + C</strong>, <strong>X</strong>, and <strong>V</strong> to copy, cut, and paste.</li>
               <li>Use <strong>Ctrl/Cmd + S</strong> to export the schematic as a JSON file.</li>
+              <li>Use <strong>File → Export as SVG</strong> to generate a self-contained SVG.</li>
               <li>Use mouse wheel to zoom in and out.</li>
               <li>Use right-click drag to pan the canvas.</li>
               <li>Use your system’s screenshot function to capture and save the schematic image.</li>

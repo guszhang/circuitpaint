@@ -4,9 +4,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Stage, Layer, Shape, Rect, Line, Circle, Group } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
+import katex from 'katex';
 import Latex from './Latex';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
 import { getNextZoomLevel, clampZoom } from '../lib/zoom';
+import { getSceneExportFrame, sceneToSvg } from '../lib/svg';
 import {
   isComponentTool,
   isDrawingTool,
@@ -57,6 +59,7 @@ export interface CanvasViewportControls {
   pasteSelection: () => void;
   deleteSelection: () => void;
   serializeScene: () => CanvasFile;
+  serializeSceneToSvg: () => string;
   loadScene: (file: CanvasFile) => void;
 }
 
@@ -75,6 +78,278 @@ const WIRE_DASH_OPTIONS = [
 ] as const;
 const QUICK_COLOR_PALETTE = ['#000000', '#4f80ff', '#e53935', '#fb8c00', '#43a047', '#8e24aa'];
 const ZOOM_BASELINE = 2;
+const CLIPBOARD_PNG_PIXEL_RATIO = 3;
+const LATEX_TOKEN_REGEX = /\$\$([\s\S]+?)\$\$|\$([^$]+?)\$|\\\((.+?)\\\)|\\\[(.+?)\\\]/g;
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function buildClipboardRichTextHtml(content: string) {
+  const parts: string[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  LATEX_TOKEN_REGEX.lastIndex = 0;
+  while ((match = LATEX_TOKEN_REGEX.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(escapeHtml(content.slice(lastIndex, match.index)));
+    }
+    const latexContent = match[1] ?? match[2] ?? match[3] ?? match[4] ?? '';
+    const display = Boolean(match[1] || match[4]);
+    try {
+      const html = katex.renderToString(latexContent, {
+        displayMode: display,
+        throwOnError: false,
+        strict: 'ignore',
+        output: 'html',
+      });
+      parts.push(display ? `<div class="katex-display">${html}</div>` : html);
+    } catch {
+      parts.push(escapeHtml(latexContent));
+    }
+    lastIndex = LATEX_TOKEN_REGEX.lastIndex;
+  }
+  if (lastIndex < content.length) {
+    parts.push(escapeHtml(content.slice(lastIndex)));
+  }
+  return parts.join('') || escapeHtml(content);
+}
+
+async function loadSvgImage(svg: string) {
+  const svgBlob = new Blob([svg], { type: 'image/svg+xml' });
+  const objectUrl = URL.createObjectURL(svgBlob);
+
+  try {
+    const image = new window.Image();
+    image.decoding = 'async';
+
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error('Failed to load SVG image for clipboard export'));
+      image.src = objectUrl;
+    });
+
+    return image;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function getCanvasFont(style: CSSStyleDeclaration) {
+  const fontStyle = style.fontStyle || 'normal';
+  const fontVariant = style.fontVariant || 'normal';
+  const fontWeight = style.fontWeight || '400';
+  const fontSize = style.fontSize || `${LABEL_FONT_SIZE}px`;
+  const fontFamily = style.fontFamily || LABEL_FONT_FAMILY;
+  return `${fontStyle} ${fontVariant} ${fontWeight} ${fontSize} ${fontFamily}`;
+}
+
+function drawElementDecorations(
+  context: CanvasRenderingContext2D,
+  element: HTMLElement,
+  originLeft: number,
+  originTop: number
+) {
+  const style = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  const x = rect.left - originLeft;
+  const y = rect.top - originTop;
+  const width = rect.width;
+  const height = rect.height;
+
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+
+  if (style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)' && style.backgroundColor !== 'transparent') {
+    context.fillStyle = style.backgroundColor;
+    context.fillRect(x, y, width, height);
+  }
+
+  const borders = [
+    { width: parseFloat(style.borderTopWidth), color: style.borderTopColor, side: 'top' as const },
+    { width: parseFloat(style.borderRightWidth), color: style.borderRightColor, side: 'right' as const },
+    { width: parseFloat(style.borderBottomWidth), color: style.borderBottomColor, side: 'bottom' as const },
+    { width: parseFloat(style.borderLeftWidth), color: style.borderLeftColor, side: 'left' as const },
+  ];
+
+  borders.forEach((border) => {
+    if (!Number.isFinite(border.width) || border.width <= 0 || !border.color) {
+      return;
+    }
+    context.strokeStyle = border.color;
+    context.lineWidth = border.width;
+    context.beginPath();
+    if (border.side === 'top') {
+      context.moveTo(x, y + border.width / 2);
+      context.lineTo(x + width, y + border.width / 2);
+    } else if (border.side === 'right') {
+      context.moveTo(x + width - border.width / 2, y);
+      context.lineTo(x + width - border.width / 2, y + height);
+    } else if (border.side === 'bottom') {
+      context.moveTo(x, y + height - border.width / 2);
+      context.lineTo(x + width, y + height - border.width / 2);
+    } else {
+      context.moveTo(x + border.width / 2, y);
+      context.lineTo(x + border.width / 2, y + height);
+    }
+    context.stroke();
+  });
+}
+
+function drawTextNodesToCanvas(
+  context: CanvasRenderingContext2D,
+  container: HTMLElement,
+  originLeft: number,
+  originTop: number
+) {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+  let current = walker.nextNode();
+
+  while (current) {
+    const textNode = current as Text;
+    const text = textNode.textContent;
+    const parent = textNode.parentElement;
+
+    if (text && text.trim() && parent) {
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
+      const rects = Array.from(range.getClientRects());
+      if (rects.length > 0) {
+        const style = window.getComputedStyle(parent);
+        const rect = rects[0];
+        context.font = getCanvasFont(style);
+        context.fillStyle = style.color || DEFAULT_STROKE_COLOR;
+        context.textAlign = 'left';
+        context.textBaseline = 'bottom';
+        context.fillText(text, rect.left - originLeft, rect.bottom - originTop);
+      }
+    }
+
+    current = walker.nextNode();
+  }
+}
+
+async function drawLatexDrawingToCanvas(
+  context: CanvasRenderingContext2D,
+  drawing: DrawingEntity,
+  targetX: number,
+  targetY: number,
+  width: number,
+  height: number
+) {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-10000px';
+  container.style.top = '0';
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  container.style.display = 'flex';
+  container.style.alignItems = 'center';
+  container.style.justifyContent = 'center';
+  container.style.textAlign = 'center';
+  container.style.whiteSpace = 'nowrap';
+  container.style.boxSizing = 'border-box';
+  container.style.pointerEvents = 'none';
+  container.style.color = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
+  container.style.fontFamily = LABEL_FONT_FAMILY;
+  container.style.fontSize = `${getTextSymbolFontSize(drawing.fontSize)}px`;
+  container.innerHTML = buildClipboardRichTextHtml(getDrawingDisplayText(drawing));
+  document.body.appendChild(container);
+
+  try {
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+    const rect = container.getBoundingClientRect();
+
+    context.save();
+    context.translate(targetX, targetY);
+    context.rotate((drawing.rotation * Math.PI) / 180);
+    if (drawing.border === true) {
+      context.strokeStyle = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
+      context.lineWidth = 1.2;
+      context.strokeRect(-width / 2, -height / 2, width, height);
+    }
+    Array.from(container.querySelectorAll<HTMLElement>('*')).forEach((element) => {
+      drawElementDecorations(context, element, rect.left + width / 2, rect.top + height / 2);
+    });
+    drawTextNodesToCanvas(context, container, rect.left + width / 2, rect.top + height / 2);
+    context.restore();
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+async function renderSvgToPngBlob(svg: string, scene: SceneData) {
+  const image = await loadSvgImage(svg);
+  const frame = getSceneExportFrame(scene);
+  const width = Math.max(1, Math.ceil(frame.width));
+  const height = Math.max(1, Math.ceil(frame.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = width * CLIPBOARD_PNG_PIXEL_RATIO;
+  canvas.height = height * CLIPBOARD_PNG_PIXEL_RATIO;
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Failed to create canvas context for clipboard export');
+  }
+
+  context.scale(CLIPBOARD_PNG_PIXEL_RATIO, CLIPBOARD_PNG_PIXEL_RATIO);
+  context.drawImage(image, 0, 0, width, height);
+
+  for (const drawing of scene.drawings) {
+    if (drawing.toolId !== 'text') {
+      continue;
+    }
+
+    const content = getDrawingDisplayText(drawing);
+    const fontSize = getTextSymbolFontSize(drawing.fontSize);
+    const metrics = measureRenderedText(content, fontSize);
+    const boxWidth = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
+    const boxHeight = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+    const targetX = drawing.x - frame.minX;
+    const targetY = drawing.y - frame.minY;
+
+    if (!hasLatexSyntax(content)) {
+      context.save();
+      context.translate(targetX, targetY);
+      context.rotate((drawing.rotation * Math.PI) / 180);
+      if (drawing.border === true) {
+        context.strokeStyle = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
+        context.lineWidth = 1.2;
+        context.strokeRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight);
+      }
+      context.fillStyle = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
+      context.font = `${fontSize}px ${LABEL_FONT_FAMILY}`;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(content, 0, 0);
+      context.restore();
+      continue;
+    }
+
+    await drawLatexDrawingToCanvas(context, drawing, targetX, targetY, boxWidth, boxHeight);
+  }
+
+  const pngBlob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+        return;
+      }
+      reject(new Error('Failed to encode PNG clipboard image'));
+    }, 'image/png');
+  });
+
+  return pngBlob;
+}
 
 function normalizeColorForInput(color: string | undefined) {
   if (!color) {
@@ -141,6 +416,27 @@ function getBoundsCenter(bounds: { minX: number; maxX: number; minY: number; max
   return {
     x: (bounds.minX + bounds.maxX) / 2,
     y: (bounds.minY + bounds.maxY) / 2,
+  };
+}
+
+function cloneSelectedScene(
+  scene: SceneData,
+  selection: { componentIds: Set<string>; drawingIds: Set<string>; wireIds: Set<string> }
+): SceneData {
+  return {
+    components: scene.components
+      .filter((component) => selection.componentIds.has(component.id))
+      .map((component) => ({ ...component })),
+    drawings: scene.drawings
+      .filter((drawing) => selection.drawingIds.has(drawing.id))
+      .map((drawing) => ({ ...drawing })),
+    wires: scene.wires
+      .filter((wire) => selection.wireIds.has(wire.id))
+      .map((wire) => ({
+        ...wire,
+        dash: wire.dash ? [...wire.dash] : [],
+        vertices: wire.vertices.map((point) => ({ ...point })),
+      })),
   };
 }
 
@@ -1058,6 +1354,9 @@ export default function CanvasViewport({
     (kind: 'component' | 'drawing' | 'wire', id: string) => {
       return (e: KonvaEventObject<MouseEvent>) => {
         if (selectedTool || isPasteMode) return;
+        if (e.evt.button === 2) {
+          return;
+        }
         e.cancelBubble = true;
         const stage = e.target.getStage();
         const pointer = stage?.getPointerPosition();
@@ -1147,6 +1446,11 @@ export default function CanvasViewport({
     ];
 
     const anchor = { x: Math.min(...allX), y: Math.min(...allY) };
+    const selectedScene = cloneSelectedScene(sceneRef.current, {
+      componentIds: selectedComponentSet,
+      drawingIds: selectedDrawingSet,
+      wireIds: selectedWireSet,
+    });
     setClipboard({
       components: selectedComponents.map((component) => ({
         toolId: component.toolId,
@@ -1177,6 +1481,29 @@ export default function CanvasViewport({
         dash: wire.dash ? [...wire.dash] : [],
       })),
     });
+
+    if (typeof window !== 'undefined' && 'ClipboardItem' in window && navigator.clipboard?.write) {
+      const svg = sceneToSvg(selectedScene, { title: 'CircuitPaint selection' });
+      const rasterSvg = sceneToSvg(selectedScene, {
+        title: 'CircuitPaint selection',
+        omitTextDrawings: true,
+      });
+      void renderSvgToPngBlob(rasterSvg, selectedScene)
+        .then((pngBlob) =>
+          navigator.clipboard.write([
+            new window.ClipboardItem({
+              'image/png': pngBlob,
+              'text/plain': new Blob([svg], { type: 'text/plain' }),
+            }),
+          ])
+        )
+        .catch((error) => {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('Failed to copy PNG to the system clipboard', error);
+          }
+        });
+    }
+
     return true;
   }, [components, drawings, selectedComponentSet, selectedDrawingSet, selectedWireSet, wires]);
 
@@ -1230,6 +1557,10 @@ export default function CanvasViewport({
 
   const serializeScene = useCallback(() => {
     return toCanvasFile(sceneRef.current);
+  }, []);
+
+  const serializeSceneToSvg = useCallback(() => {
+    return sceneToSvg(sceneRef.current, { title: 'CircuitPaint schematic' });
   }, []);
 
   const mirrorSelection = useCallback(() => {
@@ -1345,6 +1676,7 @@ export default function CanvasViewport({
         deleteSelection();
       },
       serializeScene,
+      serializeSceneToSvg,
       loadScene,
     }),
     [
@@ -1355,6 +1687,7 @@ export default function CanvasViewport({
       pasteSelection,
       redo,
       serializeScene,
+      serializeSceneToSvg,
       setZoomLevel,
       undo,
     ]

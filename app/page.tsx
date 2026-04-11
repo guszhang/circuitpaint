@@ -301,6 +301,74 @@ export default function Home() {
     })();
   }, []);
 
+  const handleFileExportSvg = useCallback(() => {
+    const svg = viewportControlsRef.current?.serializeSceneToSvg();
+    if (!svg) {
+      return;
+    }
+    const timestamp = new Date()
+      .toISOString()
+      .replace('T', '-')
+      .replace('Z', '')
+      .replace(/[:.]/g, '-');
+    const filename = `circuitpaint-${timestamp}.svg`;
+
+    const tryNativeSave = async () => {
+      if (!('showSaveFilePicker' in window)) {
+        return false;
+      }
+      const handle = await (
+        window as Window &
+          typeof globalThis & {
+            showSaveFilePicker?: (options: {
+              suggestedName?: string;
+              types?: Array<{
+                description?: string;
+                accept: Record<string, string[]>;
+              }>;
+            }) => Promise<FileSystemFileHandle>;
+          }
+      ).showSaveFilePicker?.({
+        suggestedName: filename,
+        types: [
+          {
+            description: 'Scalable Vector Graphics',
+            accept: { 'image/svg+xml': ['.svg'] },
+          },
+        ],
+      });
+      if (!handle) {
+        return false;
+      }
+      const writable = await handle.createWritable();
+      await writable.write(svg);
+      await writable.close();
+      return true;
+    };
+
+    const fallbackDownload = () => {
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    };
+
+    void (async () => {
+      try {
+        const saved = await tryNativeSave();
+        if (!saved) {
+          fallbackDownload();
+        }
+      } catch (error) {
+        console.error(error);
+        fallbackDownload();
+      }
+    })();
+  }, []);
+
   const handleQuickSaveDownload = useCallback(() => {
     const data = viewportControlsRef.current?.serializeScene();
     if (!data) {
@@ -388,6 +456,7 @@ export default function Home() {
         onEditDelete={handleEditDelete}
         onFileOpen={handleFileOpen}
         onFileSave={handleFileSave}
+        onFileExportSvg={handleFileExportSvg}
       />
       <div className={styles.mainContent}>
         <LeftToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
