@@ -29,7 +29,9 @@ const ROTATED_COMPONENTS_90 = new Set<ComponentEntity['toolId']>([
   'controlled-current-source',
   'switch',
   'n-mosfet',
+  'n-mosfet-alt',
   'p-mosfet',
+  'p-mosfet-alt',
   'npn-bjt',
   'pnp-bjt',
   'spark-gap',
@@ -409,8 +411,10 @@ function renderBasicComponent(toolId: ComponentEntity['toolId'], stroke: string)
     case 'switch':
       return `${line(-20, 0, -12, 0, stroke, 1)}${line(12, 0, 20, 0, stroke, 1)}${line(-12, 0, 8, 8, stroke, 2)}${circle(-12, 0, 2, stroke, 2, 'white')}${circle(12, 0, 2, stroke, 2, 'white')}`;
     case 'n-mosfet':
+    case 'n-mosfet-alt':
       return `${line(-8, 8, 8, 8, stroke, 2)}${line(-6, 12, 6, 12, stroke, 2)}${line(0, 12, 0, 20, stroke, 1)}${polyline([{ x: -20, y: 0 }, { x: -6, y: 0 }, { x: -6, y: 8 }], stroke, 1)}${line(0, 0, 20, 0, stroke, 1)}${line(6, 0, 6, 8, stroke, 1)}${arrow([{ x: 0, y: 0 }, { x: 0, y: 8 }], stroke, 1, 3, 3)}`;
     case 'p-mosfet':
+    case 'p-mosfet-alt':
       return `${line(-8, 8, 8, 8, stroke, 2)}${line(-6, 12, 6, 12, stroke, 2)}${line(0, 12, 0, 20, stroke, 1)}${polyline([{ x: -20, y: 0 }, { x: -6, y: 0 }, { x: -6, y: 8 }], stroke, 1)}${polyline([{ x: 6, y: 8 }, { x: 6, y: 0 }, { x: 20, y: 0 }], stroke, 1)}${line(-6, 0, 0, 0, stroke, 1)}${arrow([{ x: 0, y: 8 }, { x: 0, y: 0 }], stroke, 1, 3, 3)}`;
     case 'npn-bjt':
       return `${line(-20, 0, -10, 0, stroke, 1)}${line(10, 0, 20, 0, stroke, 1)}${line(-10, 0, -4, 8, stroke, 2)}${line(-8, 8, 8, 8, stroke, 2)}${arrow([{ x: 4, y: 8 }, { x: 10, y: 0 }], stroke, 2, 2, 2)}${line(0, 8, 0, 20, stroke, 1)}`;

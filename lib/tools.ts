@@ -12,7 +12,9 @@ const TOOL_DEFINITIONS = [
   { id: 'schottky-diode', label: 'Schottky Diode', group: 'component' },
   { id: 'switch', label: 'Switch', group: 'component' },
   { id: 'n-mosfet', label: 'N-MOSFET', group: 'component' },
+  { id: 'n-mosfet-alt', label: 'N-MOSFET Alt', group: 'component' },
   { id: 'p-mosfet', label: 'P-MOSFET', group: 'component' },
+  { id: 'p-mosfet-alt', label: 'P-MOSFET Alt', group: 'component' },
   { id: 'npn-bjt', label: 'NPN-BJT', group: 'component' },
   { id: 'pnp-bjt', label: 'PNP-BJT', group: 'component' },
   { id: 'spark-gap', label: 'Spark Gap', group: 'component' },
@@ -86,7 +88,7 @@ export const COMPONENT_TOOL_FAMILIES = [
     key: 'switch-family',
     group: 'component',
     defaultToolId: 'switch',
-    toolIds: ['switch', 'n-mosfet', 'p-mosfet', 'npn-bjt', 'pnp-bjt', 'spark-gap'],
+    toolIds: ['switch', 'n-mosfet', 'n-mosfet-alt', 'p-mosfet', 'p-mosfet-alt', 'npn-bjt', 'pnp-bjt', 'spark-gap'],
   },
   {
     key: 'logic-family',

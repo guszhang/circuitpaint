@@ -17,6 +17,7 @@ import HalfCircleSymbol from './HalfCircleSymbol';
 import IcSymbol from './IcSymbol';
 import InductorSymbol from './InductorSymbol';
 import JointSymbol from './JointSymbol';
+import NMosfetAltSymbol from './NMosfetAltSymbol';
 import NMosfetSymbol from './NMosfetSymbol';
 import NandGateSymbol from './NandGateSymbol';
 import NorGateSymbol from './NorGateSymbol';
@@ -24,6 +25,7 @@ import NotGateSymbol from './NotGateSymbol';
 import NpnBjtSymbol from './NpnBjtSymbol';
 import OpAmpSymbol from './OpAmpSymbol';
 import OrGateSymbol from './OrGateSymbol';
+import PMosfetAltSymbol from './PMosfetAltSymbol';
 import PMosfetSymbol from './PMosfetSymbol';
 import PnpBjtSymbol from './PnpBjtSymbol';
 import PolarisedCapacitorSymbol from './PolarisedCapacitorSymbol';
@@ -60,7 +62,9 @@ const TOOL_SYMBOL_COMPONENT_BY_ID: Record<ToolId, React.ComponentType<any>> = {
   'schottky-diode': SchottkyDiodeSymbol,
   'switch': SwitchSymbol,
   'n-mosfet': NMosfetSymbol,
+  'n-mosfet-alt': NMosfetAltSymbol,
   'p-mosfet': PMosfetSymbol,
+  'p-mosfet-alt': PMosfetAltSymbol,
   'npn-bjt': NpnBjtSymbol,
   'pnp-bjt': PnpBjtSymbol,
   'spark-gap': SparkGapSymbol,
