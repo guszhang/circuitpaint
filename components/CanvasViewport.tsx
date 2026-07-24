@@ -15,7 +15,13 @@ import {
   type ComponentToolId,
   type ToolId,
 } from '../lib/tools';
-import { DOT_RADIUS, GRID_SPACING, snapToGrid } from './canvas/grid';
+import {
+  DOT_RADIUS,
+  GRID_SPACING,
+  HALF_GRID_DOT_RADIUS,
+  HALF_GRID_SPACING,
+  snapToGrid,
+} from './canvas/grid';
 import {
   type ClipboardData,
   type CanvasFile,
@@ -46,6 +52,7 @@ interface CanvasViewportProps {
   selectedTool?: ToolId | '';
   onToolComplete?: () => void;
   showGrid?: boolean;
+  halfGridEnabled?: boolean;
   onToggleGrid?: () => void;
   onViewportControlsChange?: (controls: CanvasViewportControls) => void;
 }
@@ -521,9 +528,9 @@ function setWireVertexAbsolute(wire: WireEntity, vertexIndex: number, next: Poin
   };
 }
 
-function getSnappedWorld(pointer: Point, camera: Camera): Point {
+function getSnappedWorld(pointer: Point, camera: Camera, spacing: number): Point {
   const world = screenToWorld(pointer, camera);
-  return { x: snapToGrid(world.x), y: snapToGrid(world.y) };
+  return { x: snapToGrid(world.x, spacing), y: snapToGrid(world.y, spacing) };
 }
 
 function getComponentBounds(component: ComponentEntity) {
@@ -734,6 +741,7 @@ export default function CanvasViewport({
   selectedTool,
   onToolComplete,
   showGrid = true,
+  halfGridEnabled = false,
   onToggleGrid,
   onViewportControlsChange,
 }: CanvasViewportProps) {
@@ -779,6 +787,7 @@ export default function CanvasViewport({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
+  const mouseWorldPosRef = useRef<Point>(mouseWorldPos);
   const selectionStartRef = useRef<Point | null>(null);
   const isSelectingRef = useRef(false);
 
@@ -800,6 +809,7 @@ export default function CanvasViewport({
 
   const activeComponentTool = selectedTool && isComponentTool(selectedTool) ? selectedTool : null;
   const activeDrawingTool = selectedTool && isDrawingTool(selectedTool) ? selectedTool : null;
+  const activeGridSpacing = halfGridEnabled ? HALF_GRID_SPACING : GRID_SPACING;
   const wireDashOptionId = useMemo(() => getWireDashOptionId(wireDash), [wireDash]);
   const wireDashLabel = useMemo(
     () => WIRE_DASH_OPTIONS.find((option) => option.id === wireDashOptionId)?.label ?? 'Solid',
@@ -810,10 +820,10 @@ export default function CanvasViewport({
       return null;
     }
     return {
-      x: snapToGrid(mouseWorldPos.x),
-      y: snapToGrid(mouseWorldPos.y),
+      x: snapToGrid(mouseWorldPos.x, activeGridSpacing),
+      y: snapToGrid(mouseWorldPos.y, activeGridSpacing),
     };
-  }, [activeDrawingTool, mouseWorldPos]);
+  }, [activeDrawingTool, activeGridSpacing, mouseWorldPos]);
 
   const selectedComponentSet = useMemo(() => new Set(selectedComponentIds), [selectedComponentIds]);
   const selectedDrawingSet = useMemo(() => new Set(selectedDrawingIds), [selectedDrawingIds]);
@@ -914,6 +924,18 @@ export default function CanvasViewport({
   }, [selectedWireIds]);
 
   const shouldShowGrid = showGrid !== false;
+
+  useEffect(() => {
+    setHoverPoint((current) => {
+      if (!current) {
+        return current;
+      }
+      return {
+        x: snapToGrid(mouseWorldPosRef.current.x, activeGridSpacing),
+        y: snapToGrid(mouseWorldPosRef.current.y, activeGridSpacing),
+      };
+    });
+  }, [activeGridSpacing]);
 
   const applySelection = useCallback(
     (selection: { componentIds: string[]; drawingIds: string[]; wireIds: string[] }) => {
@@ -1237,8 +1259,14 @@ export default function CanvasViewport({
       const snapshot = dragSnapshotRef.current;
       if (!snapshot) return;
 
-      const snappedWorld = { x: snapToGrid(world.x), y: snapToGrid(world.y) };
-      const snappedStart = { x: snapToGrid(startWorld.x), y: snapToGrid(startWorld.y) };
+      const snappedWorld = {
+        x: snapToGrid(world.x, activeGridSpacing),
+        y: snapToGrid(world.y, activeGridSpacing),
+      };
+      const snappedStart = {
+        x: snapToGrid(startWorld.x, activeGridSpacing),
+        y: snapToGrid(startWorld.y, activeGridSpacing),
+      };
       const delta = {
         x: snappedWorld.x - snappedStart.x,
         y: snappedWorld.y - snappedStart.y,
@@ -1249,7 +1277,11 @@ export default function CanvasViewport({
         components: prev.components.map((component) => {
           const start = snapshot.components.get(component.id);
           if (!start) return component;
-          return { ...component, x: start.x + delta.x, y: start.y + delta.y };
+          return {
+            ...component,
+            x: snapToGrid(start.x + delta.x, activeGridSpacing),
+            y: snapToGrid(start.y + delta.y, activeGridSpacing),
+          };
         }),
         drawings: prev.drawings.map((drawing) => {
           const start = snapshot.drawings.get(drawing.id);
@@ -1726,21 +1758,30 @@ export default function CanvasViewport({
     const topLeft = screenToWorld({ x: 0, y: 0 }, camera);
     const bottomRight = screenToWorld({ x: stageSize.width, y: stageSize.height }, camera);
 
-    const minX = Math.floor(topLeft.x / GRID_SPACING) - 1;
-    const maxX = Math.ceil(bottomRight.x / GRID_SPACING) + 1;
-    const minY = Math.floor(topLeft.y / GRID_SPACING) - 1;
-    const maxY = Math.ceil(bottomRight.y / GRID_SPACING) + 1;
+    const gridSpacing = halfGridEnabled ? HALF_GRID_SPACING : GRID_SPACING;
+    const minX = Math.floor(topLeft.x / gridSpacing) - 1;
+    const maxX = Math.ceil(bottomRight.x / gridSpacing) + 1;
+    const minY = Math.floor(topLeft.y / gridSpacing) - 1;
+    const maxY = Math.ceil(bottomRight.y / gridSpacing) + 1;
 
     return (
       <Shape
         sceneFunc={(context, shape) => {
-          const dotRadius = DOT_RADIUS / camera.zoom;
+          const majorDotRadius = DOT_RADIUS / camera.zoom;
+          const minorDotRadius = HALF_GRID_DOT_RADIUS / camera.zoom;
           context.fillStyle = '#a0a0a0';
 
           for (let gx = minX; gx <= maxX; gx += 1) {
             for (let gy = minY; gy <= maxY; gy += 1) {
+              const isMajorDot = !halfGridEnabled || (gx % 2 === 0 && gy % 2 === 0);
               context.beginPath();
-              context.arc(gx * GRID_SPACING, gy * GRID_SPACING, dotRadius, 0, Math.PI * 2);
+              context.arc(
+                gx * gridSpacing,
+                gy * gridSpacing,
+                isMajorDot ? majorDotRadius : minorDotRadius,
+                0,
+                Math.PI * 2
+              );
               context.fill();
             }
           }
@@ -1750,7 +1791,7 @@ export default function CanvasViewport({
         listening={false}
       />
     );
-  }, [camera, stageSize]);
+  }, [camera, halfGridEnabled, stageSize]);
 
   const handleWheel = useCallback(
     (e: KonvaEventObject<WheelEvent>) => {
@@ -1802,7 +1843,7 @@ export default function CanvasViewport({
       const modifiers = { toggle: e.evt.ctrlKey || e.evt.metaKey, additive: e.evt.shiftKey };
 
       if (selectedTool) {
-        const snapped = getSnappedWorld(pointer, camera);
+        const snapped = getSnappedWorld(pointer, camera, activeGridSpacing);
 
         if (activeComponentTool) {
           const componentId = makeId('component');
@@ -1866,15 +1907,15 @@ export default function CanvasViewport({
       }
 
       if (isPasteMode && clipboard) {
-        const snapped = getSnappedWorld(pointer, camera);
+        const snapped = getSnappedWorld(pointer, camera, activeGridSpacing);
         updateScene((prev) => ({
           components: [
             ...prev.components,
             ...clipboard.components.map((component) => ({
               ...component,
               id: makeId('component'),
-              x: snapToGrid(component.x + snapped.x),
-              y: snapToGrid(component.y + snapped.y),
+              x: snapToGrid(component.x + snapped.x, activeGridSpacing),
+              y: snapToGrid(component.y + snapped.y, activeGridSpacing),
             })),
           ],
           drawings: [
@@ -1882,8 +1923,8 @@ export default function CanvasViewport({
             ...clipboard.drawings.map((drawing) => ({
               ...drawing,
               id: makeId('drawing'),
-              x: snapToGrid(drawing.x + snapped.x),
-              y: snapToGrid(drawing.y + snapped.y),
+              x: snapToGrid(drawing.x + snapped.x, activeGridSpacing),
+              y: snapToGrid(drawing.y + snapped.y, activeGridSpacing),
             })),
           ],
           wires: [
@@ -1892,8 +1933,8 @@ export default function CanvasViewport({
               makeWireFromAbsolutePoints(
                 makeId('wire'),
                 wire.points.map((point) => ({
-                  x: snapToGrid(point.x + snapped.x),
-                  y: snapToGrid(point.y + snapped.y),
+                  x: snapToGrid(point.x + snapped.x, activeGridSpacing),
+                  y: snapToGrid(point.y + snapped.y, activeGridSpacing),
                 })),
                 wire.strokeColor ?? DEFAULT_STROKE_COLOR,
                 wire.strokeWidth ?? DEFAULT_WIRE_STROKE_WIDTH,
@@ -1913,6 +1954,7 @@ export default function CanvasViewport({
     [
       activeComponentTool,
       activeDrawingTool,
+      activeGridSpacing,
       camera,
       clipboard,
       clearSelection,
@@ -1933,10 +1975,11 @@ export default function CanvasViewport({
       if (!pointer) return;
 
       const world = screenToWorld(pointer, camera);
+      mouseWorldPosRef.current = world;
       setMouseWorldPos(world);
 
       if (selectedTool || isPasteMode) {
-        setHoverPoint(getSnappedWorld(pointer, camera));
+        setHoverPoint(getSnappedWorld(pointer, camera, activeGridSpacing));
       }
 
       if (panStartRef.current && cameraStartRef.current && rightMouseDownPosRef.current) {
@@ -1965,7 +2008,7 @@ export default function CanvasViewport({
         interactionTriage.handlePointerMove(pointer, world);
       }
     },
-    [camera, interactionTriage, isPanning, isPasteMode, selectedTool]
+    [activeGridSpacing, camera, interactionTriage, isPanning, isPasteMode, selectedTool]
   );
 
   const handleMouseUp = useCallback(
@@ -2024,8 +2067,8 @@ export default function CanvasViewport({
         const baseX = parent?.x() ?? 0;
         const baseY = parent?.y() ?? 0;
         const { x, y } = e.target.position();
-        const snappedX = snapToGrid(baseX + x);
-        const snappedY = snapToGrid(baseY + y);
+        const snappedX = snapToGrid(baseX + x, activeGridSpacing);
+        const snappedY = snapToGrid(baseY + y, activeGridSpacing);
         e.target.position({ x: snappedX - baseX, y: snappedY - baseY });
         updateScene((prev) => ({
           ...prev,
@@ -2039,7 +2082,7 @@ export default function CanvasViewport({
         }), false);
       };
     },
-    [updateScene]
+    [activeGridSpacing, updateScene]
   );
 
   const handleWirePointDragEnd = useCallback(
@@ -2052,8 +2095,8 @@ export default function CanvasViewport({
           wires: prev.wires.map((wire) => {
             if (wire.id !== wireId) return wire;
             return setWireVertexAbsolute(wire, pointIndex, {
-              x: snapToGrid(wire.x + x),
-              y: snapToGrid(wire.y + y),
+              x: snapToGrid(wire.x + x, activeGridSpacing),
+              y: snapToGrid(wire.y + y, activeGridSpacing),
             });
           }),
         }), false);
@@ -2061,7 +2104,7 @@ export default function CanvasViewport({
         setIsWirePointDragging(false);
       };
     },
-    [updateScene]
+    [activeGridSpacing, updateScene]
   );
 
   useEffect(() => {
@@ -2434,7 +2477,15 @@ export default function CanvasViewport({
           )}
 
           {activeDrawingTool === 'wire' && wireHoverPoint && (
-            <Circle x={wireHoverPoint.x} y={wireHoverPoint.y} radius={2} fill="#888888" opacity={0.6} listening={false} />
+            <Group
+              x={wireHoverPoint.x}
+              y={wireHoverPoint.y}
+              opacity={0.6}
+              listening={false}
+            >
+              <Line points={[-4, 0, 4, 0]} stroke="#888888" strokeWidth={1} />
+              <Line points={[0, -4, 0, 4]} stroke="#888888" strokeWidth={1} />
+            </Group>
           )}
 
           {activeDrawingTool && activeDrawingTool !== 'wire' && hoverPoint && (

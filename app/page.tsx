@@ -172,6 +172,7 @@ export default function Home() {
   const [selectedTool, setSelectedTool] = useState<ToolId | ''>('');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showGrid, setShowGrid] = useState(true);
+  const [halfGridEnabled, setHalfGridEnabled] = useState(false);
   const viewportControlsRef = useRef<CanvasViewportControls | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -465,10 +466,16 @@ export default function Home() {
           selectedTool={selectedTool}
           onToggleGrid={handleToggleGrid}
           showGrid={showGrid}
+          halfGridEnabled={halfGridEnabled}
           onToolComplete={handleToolComplete}
           onViewportControlsChange={handleViewportControlsChange}
         />
-        <RightToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
+        <RightToolbar
+          onToolSelect={handleToolSelect}
+          selectedTool={selectedTool}
+          halfGridEnabled={halfGridEnabled}
+          onHalfGridChange={setHalfGridEnabled}
+        />
       </div>
     </div>
   );

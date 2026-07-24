@@ -24,6 +24,7 @@ interface ToolPanelProps {
   onToolSelect?: (tool: ToolId) => void;
   renderIcon?: (tool: ToolDefinition) => React.ReactNode;
   submenuByToolId?: Partial<Record<ToolId, ToolId[]>>;
+  footer?: React.ReactNode;
 }
 
 const ToolSymbolIcon = dynamic(() => import('./ToolSymbolIcon'), {
@@ -41,6 +42,7 @@ export default function ToolPanel({
   onToolSelect,
   renderIcon = defaultRenderIcon,
   submenuByToolId,
+  footer,
 }: ToolPanelProps) {
   const toolsForGroup = getToolsByGroup(group);
   const toolLookup = useMemo(
@@ -179,6 +181,7 @@ export default function ToolPanel({
           </div>
         );
       })}
+      {footer}
     </div>
   );
 }
