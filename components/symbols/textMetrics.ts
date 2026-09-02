@@ -122,6 +122,34 @@ export function measureRenderedText(text: string, fontSize = LABEL_FONT_SIZE) {
   return metrics;
 }
 
+export function getTextBoxSize(text: string, fontSize: number | undefined) {
+  const metrics = measureRenderedText(text, getTextSymbolFontSize(fontSize));
+  return {
+    width: Math.max(24, metrics.width + LABEL_PADDING_X * 2),
+    height: Math.max(16, metrics.height + LABEL_PADDING_Y * 2),
+  };
+}
+
+export function getGridSnappedTextBorderSize(
+  text: string,
+  fontSize: number | undefined,
+  gridSpacing: number,
+  minimumWidth = 0
+) {
+  const contentBox = getTextBoxSize(text, fontSize);
+  const spacing = Math.max(1, gridSpacing);
+  const margin = Math.max(2, spacing / 4);
+  const halfWidth = Math.max(
+    Math.ceil((contentBox.width / 2 + margin) / spacing) * spacing,
+    Math.ceil(minimumWidth / 2 / spacing) * spacing
+  );
+  const halfHeight = Math.max(
+    spacing,
+    Math.ceil(contentBox.height / 2 / spacing) * spacing
+  );
+  return { width: halfWidth * 2, height: halfHeight * 2 };
+}
+
 export {
   LABEL_FONT_FAMILY,
   LABEL_FONT_SIZE,

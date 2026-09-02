@@ -1,5 +1,10 @@
 import katex from 'katex';
 import type { Point } from './geometry';
+import {
+  getWireArrowRenderPoints,
+  WIRE_ARROW_POINTER_LENGTH,
+  WIRE_ARROW_POINTER_WIDTH,
+} from './wireGeometry';
 import type {
   ComponentEntity,
   DrawingEntity,
@@ -9,11 +14,9 @@ import type {
 } from '../components/canvas/types';
 import {
   LABEL_FONT_FAMILY,
-  LABEL_PADDING_X,
-  LABEL_PADDING_Y,
   getTextSymbolFontSize,
+  getTextBoxSize,
   hasLatexSyntax,
-  measureRenderedText,
 } from '../components/symbols/textMetrics';
 
 const DEFAULT_STROKE_COLOR = '#000000';
@@ -111,8 +114,14 @@ function polyline(points: Point[], stroke: string, strokeWidth: number, extra = 
   return `<polyline points="${pointsAttr(points)}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round"${extra} />`;
 }
 
-function polygon(points: Point[], stroke: string, strokeWidth: number, fill: string) {
-  return `<polygon points="${pointsAttr(points)}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="round" />`;
+function polygon(
+  points: Point[],
+  stroke: string,
+  strokeWidth: number,
+  fill: string,
+  lineJoin: 'round' | 'miter' = 'round'
+) {
+  return `<polygon points="${pointsAttr(points)}" fill="${fill}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="round" stroke-linejoin="${lineJoin}" />`;
 }
 
 function line(x1: number, y1: number, x2: number, y2: number, stroke: string, strokeWidth: number, extra = '') {
@@ -151,7 +160,16 @@ function rightArc(cx: number, cy: number, radius: number, stroke: string, stroke
   return arcPath(cx, cy, radius, { x: 0, y: -radius }, { x: 0, y: radius }, 1, stroke, strokeWidth);
 }
 
-function arrow(points: Point[], stroke: string, strokeWidth: number, pointerLength: number, pointerWidth: number, fill = stroke) {
+function arrow(
+  points: Point[],
+  stroke: string,
+  strokeWidth: number,
+  pointerLength: number,
+  pointerWidth: number,
+  fill = stroke,
+  extra = '',
+  lineJoin: 'round' | 'miter' = 'round'
+) {
   if (points.length < 2) {
     return '';
   }
@@ -177,7 +195,7 @@ function arrow(points: Point[], stroke: string, strokeWidth: number, pointerLeng
     y: base.y - py * (pointerWidth / 2),
   };
 
-  return `${polyline(points, stroke, strokeWidth)}${polygon([left, end, right], stroke, strokeWidth, fill)}`;
+  return `${polyline(points, stroke, strokeWidth, extra)}${polygon([left, end, right], stroke, strokeWidth, fill, lineJoin)}`;
 }
 
 function componentBounds(component: ComponentEntity): Bounds {
@@ -194,6 +212,34 @@ function componentBounds(component: ComponentEntity): Bounds {
 
 function getDrawingDisplayText(drawing: DrawingEntity) {
   return drawing.toolId === 'text' ? drawing.text?.trim() || 'Text' : '';
+}
+
+function getCircleRadius(drawing: DrawingEntity) {
+  return Math.max(1, Math.hypot(drawing.radiusX ?? 20, drawing.radiusY ?? 0));
+}
+
+function getRectangleSize(drawing: DrawingEntity) {
+  return {
+    width: Math.max(1, drawing.shapeWidth ?? 40),
+    height: Math.max(1, drawing.shapeHeight ?? 40),
+  };
+}
+
+function getTextBorderStrokeWidth(drawing: DrawingEntity) {
+  return drawing.borderStrokeWidth && Number.isFinite(drawing.borderStrokeWidth)
+    ? drawing.borderStrokeWidth
+    : 1;
+}
+
+function getDrawingTextBoxSize(drawing: DrawingEntity) {
+  const content = getTextBoxSize(getDrawingDisplayText(drawing), drawing.fontSize);
+  if (!drawing.border) {
+    return content;
+  }
+  return {
+    width: drawing.borderWidth && drawing.borderWidth > 0 ? drawing.borderWidth : content.width,
+    height: drawing.borderHeight && drawing.borderHeight > 0 ? drawing.borderHeight : content.height,
+  };
 }
 
 function getClipboardTextFallback(content: string) {
@@ -216,15 +262,39 @@ function drawingBounds(drawing: DrawingEntity): Bounds {
   }
 
   if (drawing.toolId === 'text') {
-    const text = getDrawingDisplayText(drawing);
-    const metrics = measureRenderedText(text, getTextSymbolFontSize(drawing.fontSize));
-    const width = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
-    const height = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+    const box = getDrawingTextBoxSize(drawing);
+    const width = drawing.rotation % 180 === 0 ? box.width : box.height;
+    const height = drawing.rotation % 180 === 0 ? box.height : box.width;
+    const borderPad = drawing.border ? getTextBorderStrokeWidth(drawing) / 2 : 0;
     return {
-      minX: drawing.x - width / 2,
-      maxX: drawing.x + width / 2,
-      minY: drawing.y - height / 2,
-      maxY: drawing.y + height / 2,
+      minX: drawing.x - width / 2 - borderPad,
+      maxX: drawing.x + width / 2 + borderPad,
+      minY: drawing.y - height / 2 - borderPad,
+      maxY: drawing.y + height / 2 + borderPad,
+    };
+  }
+
+  if (drawing.toolId === 'circle' || drawing.toolId === 'sum') {
+    const radius = getCircleRadius(drawing);
+    const pad = getWireStrokeWidth(drawing.strokeWidth) / 2;
+    return {
+      minX: drawing.x - radius - pad,
+      maxX: drawing.x + radius + pad,
+      minY: drawing.y - radius - pad,
+      maxY: drawing.y + radius + pad,
+    };
+  }
+
+  if (drawing.toolId === 'rectangle') {
+    const size = getRectangleSize(drawing);
+    const width = drawing.rotation % 180 === 0 ? size.width : size.height;
+    const height = drawing.rotation % 180 === 0 ? size.height : size.width;
+    const pad = getWireStrokeWidth(drawing.strokeWidth) / 2;
+    return {
+      minX: drawing.x - width / 2 - pad,
+      maxX: drawing.x + width / 2 + pad,
+      minY: drawing.y - height / 2 - pad,
+      maxY: drawing.y + height / 2 + pad,
     };
   }
 
@@ -247,7 +317,11 @@ function wireBounds(wire: WireEntity): Bounds {
   const points = wirePoints(wire);
   const xs = points.map((point) => point.x);
   const ys = points.map((point) => point.y);
-  const pad = Math.max(3, getWireStrokeWidth(wire.strokeWidth));
+  const pad = Math.max(
+    3,
+    getWireStrokeWidth(wire.strokeWidth),
+    wire.arrowEnd ? WIRE_ARROW_POINTER_WIDTH / 2 + getWireStrokeWidth(wire.strokeWidth) / 2 : 0
+  );
   return {
     minX: Math.min(...xs) - pad,
     maxX: Math.max(...xs) + pad,
@@ -343,12 +417,13 @@ function renderPlainTextDrawing(drawing: DrawingEntity) {
     ? getClipboardTextFallback(content) || content
     : content;
   const fontSize = getTextSymbolFontSize(drawing.fontSize);
-  const metrics = measureRenderedText(displayContent, fontSize);
-  const width = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
-  const height = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+  const { width, height } = getDrawingTextBoxSize(drawing);
   const color = getColor(drawing.strokeColor);
+  const border = drawing.border
+    ? rect(-width / 2, -height / 2, width, height, color, getTextBorderStrokeWidth(drawing))
+    : '';
 
-  return `<g transform="translate(${drawing.x} ${drawing.y}) rotate(${drawing.rotation})"><text x="0" y="0" fill="${escapeAttribute(color)}" stroke="none" font-family="${escapeAttribute(EXPORT_FONT_FAMILY)}" font-size="${fontSize}" text-anchor="middle" dominant-baseline="central">${escapeXml(displayContent)}</text></g>`;
+  return `<g transform="translate(${drawing.x} ${drawing.y}) rotate(${drawing.rotation})">${border}<text x="0" y="0" fill="${escapeAttribute(color)}" stroke="none" font-family="${escapeAttribute(EXPORT_FONT_FAMILY)}" font-size="${fontSize}" text-anchor="middle" dominant-baseline="central">${escapeXml(displayContent)}</text></g>`;
 }
 
 function renderTextDrawing(drawing: DrawingEntity, options: SvgExportOptions) {
@@ -357,9 +432,7 @@ function renderTextDrawing(drawing: DrawingEntity, options: SvgExportOptions) {
   }
   const content = getDrawingDisplayText(drawing);
   const fontSize = getTextSymbolFontSize(drawing.fontSize);
-  const metrics = measureRenderedText(content, fontSize);
-  const width = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
-  const height = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+  const { width, height } = getDrawingTextBoxSize(drawing);
   const color = getColor(drawing.strokeColor);
   const boxX = -width / 2;
   const boxY = -height / 2;
@@ -367,13 +440,29 @@ function renderTextDrawing(drawing: DrawingEntity, options: SvgExportOptions) {
   const markup = hasLatexSyntax(content)
     ? renderRichTextMarkup(content)
     : escapeXml(content);
-  const borderStyle = drawing.border === true ? `border:1.2px solid ${escapeAttribute(color)};` : 'border:none;';
+  const borderStyle = drawing.border === true
+    ? `border:${getTextBorderStrokeWidth(drawing)}px solid ${escapeAttribute(color)};`
+    : 'border:none;';
   return `<g transform="${transform}"><foreignObject x="${boxX}" y="${boxY}" width="${width}" height="${height}"><div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;color:${escapeAttribute(color)};font-family:${escapeAttribute(EXPORT_FONT_FAMILY)};font-size:${fontSize}px;line-height:1;overflow:visible;box-sizing:border-box;${borderStyle}">${markup}</div></foreignObject></g>`;
 }
 
 function renderWire(wire: WireEntity) {
   const points = wirePoints(wire);
-  return polyline(points, getColor(wire.strokeColor), getWireStrokeWidth(wire.strokeWidth), getWireDash(wire.dash));
+  const stroke = getColor(wire.strokeColor);
+  const strokeWidth = getWireStrokeWidth(wire.strokeWidth);
+  if (wire.arrowEnd) {
+    return arrow(
+      getWireArrowRenderPoints(points),
+      stroke,
+      strokeWidth,
+      WIRE_ARROW_POINTER_LENGTH,
+      WIRE_ARROW_POINTER_WIDTH,
+      stroke,
+      getWireDash(wire.dash),
+      'miter'
+    );
+  }
+  return polyline(points, stroke, strokeWidth, getWireDash(wire.dash));
 }
 
 function translateGroup(x: number, y: number, body: string) {
@@ -492,6 +581,38 @@ function renderDrawing(drawing: DrawingEntity, options: SvgExportOptions) {
       return transformGroup(
         `translate(${drawing.x} ${drawing.y}) rotate(${drawing.rotation})`,
         rightArc(0, -5, 5, stroke, width)
+      );
+    }
+    case 'circle':
+      return translateGroup(
+        drawing.x,
+        drawing.y,
+        circle(0, 0, getCircleRadius(drawing), stroke, getWireStrokeWidth(drawing.strokeWidth))
+      );
+    case 'sum': {
+      const radius = getCircleRadius(drawing);
+      const diagonalRadius = radius * Math.SQRT1_2;
+      const width = getWireStrokeWidth(drawing.strokeWidth);
+      return translateGroup(
+        drawing.x,
+        drawing.y,
+        `${circle(0, 0, radius, stroke, width)}` +
+          `${line(-diagonalRadius, -diagonalRadius, diagonalRadius, diagonalRadius, stroke, width)}` +
+          `${line(-diagonalRadius, diagonalRadius, diagonalRadius, -diagonalRadius, stroke, width)}`
+      );
+    }
+    case 'rectangle': {
+      const size = getRectangleSize(drawing);
+      return transformGroup(
+        `translate(${drawing.x} ${drawing.y}) rotate(${drawing.rotation})`,
+        rect(
+          -size.width / 2,
+          -size.height / 2,
+          size.width,
+          size.height,
+          stroke,
+          getWireStrokeWidth(drawing.strokeWidth)
+        )
       );
     }
     case 'text':

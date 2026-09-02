@@ -40,6 +40,9 @@ const TOOL_DEFINITIONS = [
   { id: 'half-circle', label: 'Half-circle', group: 'drawing' },
   { id: 'port', label: 'Port', group: 'drawing' },
   { id: 'wire', label: 'Wire', group: 'drawing' },
+  { id: 'circle', label: 'Circle', group: 'drawing' },
+  { id: 'sum', label: 'Sum', group: 'drawing' },
+  { id: 'rectangle', label: 'Rectangle', group: 'drawing' },
   { id: 'text', label: 'Text', group: 'drawing' },
   { id: 'voltage-plus-annotation', label: 'Voltage +', group: 'drawing' },
   { id: 'voltage-minus-annotation', label: 'Voltage -', group: 'drawing' },
@@ -118,6 +121,12 @@ export const DRAWING_TOOL_FAMILIES = [
     toolIds: ['joint', 'port', 'bridge', 'half-circle'],
   },
   { key: 'wire-family', group: 'drawing', defaultToolId: 'wire', toolIds: ['wire'] },
+  {
+    key: 'shape-family',
+    group: 'drawing',
+    defaultToolId: 'circle',
+    toolIds: ['circle', 'sum', 'rectangle'],
+  },
   { key: 'text-family', group: 'drawing', defaultToolId: 'text', toolIds: ['text'] },
   {
     key: 'voltage-family',

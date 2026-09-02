@@ -1,12 +1,17 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Stage, Layer, Shape, Rect, Line, Circle, Group } from 'react-konva';
+import { Stage, Layer, Shape, Rect, Line, Arrow, Circle, Group } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import katex from 'katex';
 import Latex from './Latex';
 import { Camera, Point, screenToWorld } from '../lib/geometry';
+import {
+  getWireArrowRenderPoints,
+  WIRE_ARROW_POINTER_LENGTH,
+  WIRE_ARROW_POINTER_WIDTH,
+} from '../lib/wireGeometry';
 import { getNextZoomLevel, clampZoom } from '../lib/zoom';
 import { getSceneExportFrame, sceneToSvg } from '../lib/svg';
 import {
@@ -43,8 +48,9 @@ import {
   MAX_TEXT_FONT_SIZE,
   MIN_TEXT_FONT_SIZE,
   getTextSymbolFontSize,
+  getGridSnappedTextBorderSize,
+  getTextBoxSize,
   hasLatexSyntax,
-  measureRenderedText,
 } from './symbols/textMetrics';
 
 interface CanvasViewportProps {
@@ -67,6 +73,7 @@ export interface CanvasViewportControls {
   deleteSelection: () => void;
   serializeScene: () => CanvasFile;
   serializeSceneToSvg: () => string;
+  serializeSceneToPng: () => Promise<Blob>;
   loadScene: (file: CanvasFile) => void;
 }
 
@@ -77,6 +84,8 @@ const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toSt
 const DEFAULT_STROKE_COLOR = '#000000';
 const DEFAULT_WIRE_STROKE_WIDTH = 1;
 const WIRE_STROKE_WIDTH_OPTIONS = [1, 2, 3, 5] as const;
+const DEFAULT_TEXT_BORDER_STROKE_WIDTH = 1;
+const DEFAULT_SHAPE_SIZE = 40;
 const WIRE_DASH_OPTIONS = [
   { id: 'solid', label: 'Solid', dash: [] as number[] },
   { id: 'short', label: 'Short', dash: [6, 4] as number[] },
@@ -281,7 +290,7 @@ async function drawLatexDrawingToCanvas(
     context.rotate((drawing.rotation * Math.PI) / 180);
     if (drawing.border === true) {
       context.strokeStyle = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
-      context.lineWidth = 1.2;
+      context.lineWidth = normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth);
       context.strokeRect(-width / 2, -height / 2, width, height);
     }
     Array.from(container.querySelectorAll<HTMLElement>('*')).forEach((element) => {
@@ -318,9 +327,7 @@ async function renderSvgToPngBlob(svg: string, scene: SceneData) {
 
     const content = getDrawingDisplayText(drawing);
     const fontSize = getTextSymbolFontSize(drawing.fontSize);
-    const metrics = measureRenderedText(content, fontSize);
-    const boxWidth = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
-    const boxHeight = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+    const { width: boxWidth, height: boxHeight } = getDrawingTextBoxSize(drawing);
     const targetX = drawing.x - frame.minX;
     const targetY = drawing.y - frame.minY;
 
@@ -330,7 +337,7 @@ async function renderSvgToPngBlob(svg: string, scene: SceneData) {
       context.rotate((drawing.rotation * Math.PI) / 180);
       if (drawing.border === true) {
         context.strokeStyle = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
-        context.lineWidth = 1.2;
+        context.lineWidth = normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth);
         context.strokeRect(-boxWidth / 2, -boxHeight / 2, boxWidth, boxHeight);
       }
       context.fillStyle = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
@@ -358,6 +365,19 @@ async function renderSvgToPngBlob(svg: string, scene: SceneData) {
   return pngBlob;
 }
 
+async function buildClipboardImageHtml(pngBlob: Blob) {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to encode clipboard image'));
+    reader.readAsDataURL(pngBlob);
+  });
+
+  return new Blob([`<img src="${dataUrl}" alt="CircuitPaint selection">`], {
+    type: 'text/html',
+  });
+}
+
 function normalizeColorForInput(color: string | undefined) {
   if (!color) {
     return DEFAULT_STROKE_COLOR;
@@ -380,8 +400,42 @@ function normalizeWireStrokeWidth(value: number | undefined) {
     : DEFAULT_WIRE_STROKE_WIDTH;
 }
 
+function normalizeTextBorderStrokeWidth(value: number | undefined) {
+  return normalizeWireStrokeWidth(value ?? DEFAULT_TEXT_BORDER_STROKE_WIDTH);
+}
+
+function getDrawingTextBoxSize(drawing: DrawingEntity) {
+  const content = getTextBoxSize(getDrawingDisplayText(drawing), drawing.fontSize);
+  if (!drawing.border) {
+    return content;
+  }
+  return {
+    width: drawing.borderWidth && drawing.borderWidth > 0 ? drawing.borderWidth : content.width,
+    height: drawing.borderHeight && drawing.borderHeight > 0 ? drawing.borderHeight : content.height,
+  };
+}
+
 function isBridgeDrawingTool(toolId: NonWireDrawingToolId | DrawingEntity['toolId']) {
   return toolId === 'bridge' || toolId === 'half-circle';
+}
+
+function isShapeDrawingTool(toolId: NonWireDrawingToolId | DrawingEntity['toolId']) {
+  return toolId === 'circle' || toolId === 'sum' || toolId === 'rectangle';
+}
+
+function isCircularShapeDrawingTool(toolId: NonWireDrawingToolId | DrawingEntity['toolId']) {
+  return toolId === 'circle' || toolId === 'sum';
+}
+
+function getCircleRadius(drawing: Pick<DrawingEntity, 'radiusX' | 'radiusY'>) {
+  return Math.max(1, Math.hypot(drawing.radiusX ?? DEFAULT_SHAPE_SIZE / 2, drawing.radiusY ?? 0));
+}
+
+function getRectangleSize(drawing: Pick<DrawingEntity, 'shapeWidth' | 'shapeHeight'>) {
+  return {
+    width: Math.max(1, drawing.shapeWidth ?? DEFAULT_SHAPE_SIZE),
+    height: Math.max(1, drawing.shapeHeight ?? DEFAULT_SHAPE_SIZE),
+  };
 }
 
 function normalizeWireDash(value: number[] | undefined) {
@@ -400,7 +454,7 @@ function getWireDashOptionId(value: number[]) {
   return matched?.id ?? 'solid';
 }
 
-function getDrawingDisplayText(drawing: DrawingEntity) {
+function getDrawingDisplayText(drawing: Pick<DrawingEntity, 'toolId' | 'text'>) {
   if (drawing.toolId === 'text') {
     return drawing.text?.trim() || 'Text';
   }
@@ -464,12 +518,49 @@ function toCanvasFile(scene: SceneData): CanvasFile {
 function fromCanvasFile(file: CanvasFile): SceneData {
   return {
     components: file.components.map((component) => ({ ...component, flipped: component.flipped === true })),
-    drawings: file.drawings.map((drawing) => ({
-      ...drawing,
-      strokeWidth: isBridgeDrawingTool(drawing.toolId)
-        ? normalizeWireStrokeWidth(drawing.strokeWidth)
-        : drawing.strokeWidth,
-    })),
+    drawings: file.drawings.map((drawing) => {
+      if (isCircularShapeDrawingTool(drawing.toolId)) {
+        const radiusX = drawing.radiusX ?? DEFAULT_SHAPE_SIZE / 2;
+        const radiusY = drawing.radiusY ?? 0;
+        const hasRadius = Math.hypot(radiusX, radiusY) > 0;
+        return {
+          ...drawing,
+          rotation: 0,
+          radiusX: hasRadius ? radiusX : DEFAULT_SHAPE_SIZE / 2,
+          radiusY: hasRadius ? radiusY : 0,
+        };
+      }
+      if (drawing.toolId === 'rectangle') {
+        return {
+          ...drawing,
+          rotation: 0,
+          shapeWidth: Math.max(1, Math.abs(drawing.shapeWidth ?? DEFAULT_SHAPE_SIZE)),
+          shapeHeight: Math.max(1, Math.abs(drawing.shapeHeight ?? DEFAULT_SHAPE_SIZE)),
+        };
+      }
+      if (drawing.toolId === 'text' && drawing.border) {
+        const gridSpacing = drawing.borderGridSpacing ?? GRID_SPACING;
+        const borderSize = getGridSnappedTextBorderSize(
+          getDrawingDisplayText(drawing),
+          drawing.fontSize,
+          gridSpacing,
+          drawing.borderWidth
+        );
+        return {
+          ...drawing,
+          borderWidth: borderSize.width,
+          borderHeight: borderSize.height,
+          borderStrokeWidth: normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth),
+          borderGridSpacing: gridSpacing,
+        };
+      }
+      return {
+        ...drawing,
+        strokeWidth: isBridgeDrawingTool(drawing.toolId)
+          ? normalizeWireStrokeWidth(drawing.strokeWidth)
+          : drawing.strokeWidth,
+      };
+    }),
     wires: file.wires.map((wire) => ({
       ...wire,
       strokeWidth: normalizeWireStrokeWidth(wire.strokeWidth),
@@ -491,7 +582,8 @@ function makeWireFromAbsolutePoints(
   points: Point[],
   strokeColor = DEFAULT_STROKE_COLOR,
   strokeWidth = DEFAULT_WIRE_STROKE_WIDTH,
-  dash: number[] = []
+  dash: number[] = [],
+  arrowEnd = false
 ): WireEntity {
   const first = points[0] ?? { x: 0, y: 0 };
   return {
@@ -504,6 +596,7 @@ function makeWireFromAbsolutePoints(
     strokeColor,
     strokeWidth: normalizeWireStrokeWidth(strokeWidth),
     dash: normalizeWireDash(dash),
+    arrowEnd,
   };
 }
 
@@ -556,10 +649,34 @@ function getDrawingBounds(drawing: DrawingEntity) {
   }
 
   if (drawing.toolId === 'text') {
-    const text = getDrawingDisplayText(drawing);
-    const metrics = measureRenderedText(text, getTextSymbolFontSize(drawing.fontSize));
-    const width = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
-    const height = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+    const box = getDrawingTextBoxSize(drawing);
+    const width = drawing.rotation % 180 === 0 ? box.width : box.height;
+    const height = drawing.rotation % 180 === 0 ? box.height : box.width;
+    const borderPad = drawing.border
+      ? normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth) / 2
+      : 0;
+    return {
+      minX: drawing.x - width / 2 - borderPad,
+      maxX: drawing.x + width / 2 + borderPad,
+      minY: drawing.y - height / 2 - borderPad,
+      maxY: drawing.y + height / 2 + borderPad,
+    };
+  }
+
+  if (isCircularShapeDrawingTool(drawing.toolId)) {
+    const radius = getCircleRadius(drawing);
+    return {
+      minX: drawing.x - radius,
+      maxX: drawing.x + radius,
+      minY: drawing.y - radius,
+      maxY: drawing.y + radius,
+    };
+  }
+
+  if (drawing.toolId === 'rectangle') {
+    const size = getRectangleSize(drawing);
+    const width = drawing.rotation % 180 === 0 ? size.width : size.height;
+    const height = drawing.rotation % 180 === 0 ? size.height : size.width;
     return {
       minX: drawing.x - width / 2,
       maxX: drawing.x + width / 2,
@@ -686,6 +803,7 @@ function ComponentGlyph({
 function DrawingGlyph({
   drawing,
   isSelected,
+  hideText = false,
   draggable = false,
   listening = true,
   strokeColor = 'black',
@@ -699,6 +817,7 @@ function DrawingGlyph({
 }: {
   drawing: DrawingEntity;
   isSelected: boolean;
+  hideText?: boolean;
   draggable?: boolean;
   listening?: boolean;
   strokeColor?: string;
@@ -718,10 +837,17 @@ function DrawingGlyph({
       y={drawing.y}
       rotation={drawing.rotation}
       isSelected={isSelected}
-      text={drawing.toolId === 'text' ? getDrawingDisplayText(drawing) : undefined}
+      text={drawing.toolId === 'text' ? (hideText ? '' : getDrawingDisplayText(drawing)) : undefined}
       strokeWidth={isBridgeDrawingTool(drawing.toolId) ? normalizeWireStrokeWidth(drawing.strokeWidth) : undefined}
       border={drawing.toolId === 'text' ? drawing.border === true : undefined}
+      borderWidth={drawing.toolId === 'text' ? drawing.borderWidth : undefined}
+      borderHeight={drawing.toolId === 'text' ? drawing.borderHeight : undefined}
+      borderStrokeWidth={drawing.toolId === 'text' ? normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth) : undefined}
       fontSize={drawing.toolId === 'text' ? getTextSymbolFontSize(drawing.fontSize) : undefined}
+      radiusX={isCircularShapeDrawingTool(drawing.toolId) ? drawing.radiusX : undefined}
+      radiusY={isCircularShapeDrawingTool(drawing.toolId) ? drawing.radiusY : undefined}
+      shapeWidth={drawing.toolId === 'rectangle' ? drawing.shapeWidth : undefined}
+      shapeHeight={drawing.toolId === 'rectangle' ? drawing.shapeHeight : undefined}
       draggable={draggable}
       listening={listening}
       strokeColor={strokeColor}
@@ -763,6 +889,7 @@ export default function CanvasViewport({
   const [wireStrokeWidth, setWireStrokeWidth] = useState<number>(DEFAULT_WIRE_STROKE_WIDTH);
   const [drawingStrokeWidth, setDrawingStrokeWidth] = useState<number>(DEFAULT_WIRE_STROKE_WIDTH);
   const [wireDash, setWireDash] = useState<number[]>([]);
+  const [wireArrowEnd, setWireArrowEnd] = useState(false);
   const [isWireWidthMenuOpen, setIsWireWidthMenuOpen] = useState(false);
   const [isWireDashMenuOpen, setIsWireDashMenuOpen] = useState(false);
   const [wireDraft, setWireDraft] = useState<Point[] | null>(null);
@@ -883,6 +1010,16 @@ export default function CanvasViewport({
     ? getTextSymbolFontSize(selectedTextDrawing.fontSize)
     : LABEL_FONT_SIZE;
   const selectedTextBorder = selectedTextDrawing?.border === true;
+  const selectedTextBorderStrokeWidth = normalizeTextBorderStrokeWidth(
+    selectedTextDrawing?.borderStrokeWidth
+  );
+  const selectedShapeDrawing = useMemo(() => {
+    if (singleSelection?.kind !== 'drawing') {
+      return null;
+    }
+    const drawing = drawings.find((item) => item.id === singleSelection.id);
+    return drawing && isShapeDrawingTool(drawing.toolId) ? drawing : null;
+  }, [drawings, singleSelection]);
   const selectedWire = useMemo(() => {
     if (singleSelection?.kind !== 'wire') {
       return null;
@@ -890,6 +1027,7 @@ export default function CanvasViewport({
     return wires.find((item) => item.id === singleSelection.id) ?? null;
   }, [singleSelection, wires]);
   const selectedWireStrokeWidth = normalizeWireStrokeWidth(selectedWire?.strokeWidth);
+  const selectedWireArrowEnd = selectedWire?.arrowEnd === true;
   const selectedBridgeDrawing = useMemo(() => {
     if (singleSelection?.kind !== 'drawing') {
       return null;
@@ -1039,10 +1177,46 @@ export default function CanvasViewport({
             return drawing;
           }
           changed = true;
-          return { ...drawing, border };
+          if (!border) {
+            return { ...drawing, border: false };
+          }
+          const borderSize = getGridSnappedTextBorderSize(
+            getDrawingDisplayText(drawing),
+            drawing.fontSize,
+            activeGridSpacing,
+            drawing.borderWidth
+          );
+          return {
+            ...drawing,
+            x: snapToGrid(drawing.x, activeGridSpacing),
+            y: snapToGrid(drawing.y, activeGridSpacing),
+            border: true,
+            borderWidth: borderSize.width,
+            borderHeight: borderSize.height,
+            borderStrokeWidth: normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth),
+            borderGridSpacing: activeGridSpacing,
+          };
         });
         return changed ? { ...prev, drawings: drawingsNext } : prev;
       });
+    },
+    [activeGridSpacing, selectedTextDrawing, updateScene]
+  );
+
+  const applySelectedTextBorderStrokeWidth = useCallback(
+    (borderStrokeWidth: number) => {
+      if (!selectedTextDrawing) {
+        return;
+      }
+      const normalized = normalizeTextBorderStrokeWidth(borderStrokeWidth);
+      updateScene((prev) => ({
+        ...prev,
+        drawings: prev.drawings.map((drawing) =>
+          drawing.id === selectedTextDrawing.id && drawing.toolId === 'text'
+            ? { ...drawing, borderStrokeWidth: normalized }
+            : drawing
+        ),
+      }));
     },
     [selectedTextDrawing, updateScene]
   );
@@ -1066,12 +1240,26 @@ export default function CanvasViewport({
             return drawing;
           }
           changed = true;
-          return { ...drawing, fontSize: nextFontSize };
+          const borderSize = drawing.border
+            ? getGridSnappedTextBorderSize(
+                getDrawingDisplayText(drawing),
+                nextFontSize,
+                drawing.borderGridSpacing ?? activeGridSpacing,
+                drawing.borderWidth
+              )
+            : null;
+          return {
+            ...drawing,
+            fontSize: nextFontSize,
+            ...(borderSize
+              ? { borderWidth: borderSize.width, borderHeight: borderSize.height }
+              : {}),
+          };
         });
         return changed ? { ...prev, drawings: drawingsNext } : prev;
       });
     },
-    [selectedTextDrawing, updateScene]
+    [activeGridSpacing, selectedTextDrawing, updateScene]
   );
 
   const applySelectedWireStrokeWidth = useCallback(
@@ -1119,6 +1307,21 @@ export default function CanvasViewport({
         });
         return changed ? { ...prev, wires: wiresNext } : prev;
       });
+    },
+    [selectedWire, updateScene]
+  );
+
+  const applySelectedWireArrowEnd = useCallback(
+    (arrowEnd: boolean) => {
+      if (!selectedWire) {
+        return;
+      }
+      updateScene((prev) => ({
+        ...prev,
+        wires: prev.wires.map((wire) =>
+          wire.id === selectedWire.id ? { ...wire, arrowEnd } : wire
+        ),
+      }));
     },
     [selectedWire, updateScene]
   );
@@ -1415,13 +1618,30 @@ export default function CanvasViewport({
         }
         updateScene((prev) => ({
           ...prev,
-          drawings: prev.drawings.map((item) =>
-            item.id === drawing.id ? { ...item, text: next } : item
-          ),
+          drawings: prev.drawings.map((item) => {
+            if (item.id !== drawing.id || item.toolId !== 'text') {
+              return item;
+            }
+            const borderSize = item.border
+              ? getGridSnappedTextBorderSize(
+                  next,
+                  item.fontSize,
+                  item.borderGridSpacing ?? activeGridSpacing,
+                  item.borderWidth
+                )
+              : null;
+            return {
+              ...item,
+              text: next,
+              ...(borderSize
+                ? { borderWidth: borderSize.width, borderHeight: borderSize.height }
+                : {}),
+            };
+          }),
         }));
       };
     },
-    [isPasteMode, selectedTool, updateScene]
+    [activeGridSpacing, isPasteMode, selectedTool, updateScene]
   );
 
   const undo = useCallback(() => {
@@ -1501,7 +1721,15 @@ export default function CanvasViewport({
         strokeColor: drawing.strokeColor,
         strokeWidth: drawing.strokeWidth,
         border: drawing.border,
+        borderWidth: drawing.borderWidth,
+        borderHeight: drawing.borderHeight,
+        borderStrokeWidth: drawing.borderStrokeWidth,
+        borderGridSpacing: drawing.borderGridSpacing,
         fontSize: drawing.fontSize,
+        radiusX: drawing.radiusX,
+        radiusY: drawing.radiusY,
+        shapeWidth: drawing.shapeWidth,
+        shapeHeight: drawing.shapeHeight,
       })),
       wires: selectedWires.map((wire) => ({
         points: getAbsoluteWirePoints(wire).map((point) => ({
@@ -1511,24 +1739,22 @@ export default function CanvasViewport({
         strokeColor: wire.strokeColor,
         strokeWidth: wire.strokeWidth,
         dash: wire.dash ? [...wire.dash] : [],
+        arrowEnd: wire.arrowEnd === true,
       })),
     });
 
     if (typeof window !== 'undefined' && 'ClipboardItem' in window && navigator.clipboard?.write) {
-      const svg = sceneToSvg(selectedScene, { title: 'CircuitPaint selection' });
       const rasterSvg = sceneToSvg(selectedScene, {
         title: 'CircuitPaint selection',
         omitTextDrawings: true,
       });
-      void renderSvgToPngBlob(rasterSvg, selectedScene)
-        .then((pngBlob) =>
-          navigator.clipboard.write([
-            new window.ClipboardItem({
-              'image/png': pngBlob,
-              'text/plain': new Blob([svg], { type: 'text/plain' }),
-            }),
-          ])
-        )
+      const pngBlob = renderSvgToPngBlob(rasterSvg, selectedScene);
+      const clipboardItem = new window.ClipboardItem({
+        'image/png': pngBlob,
+        'text/html': pngBlob.then(buildClipboardImageHtml),
+      });
+      void navigator.clipboard
+        .write([clipboardItem])
         .catch((error) => {
           if (process.env.NODE_ENV !== 'production') {
             console.warn('Failed to copy PNG to the system clipboard', error);
@@ -1595,6 +1821,15 @@ export default function CanvasViewport({
     return sceneToSvg(sceneRef.current, { title: 'CircuitPaint schematic' });
   }, []);
 
+  const serializeSceneToPng = useCallback(() => {
+    const currentScene = cloneScene(sceneRef.current);
+    const rasterSvg = sceneToSvg(currentScene, {
+      title: 'CircuitPaint schematic',
+      omitTextDrawings: true,
+    });
+    return renderSvgToPngBlob(rasterSvg, currentScene);
+  }, []);
+
   const mirrorSelection = useCallback(() => {
     const selection = {
       componentIds: new Set(selectedComponentIdsRef.current),
@@ -1628,7 +1863,13 @@ export default function CanvasViewport({
       ),
       drawings: prev.drawings.map((drawing) =>
         selection.drawingIds.has(drawing.id)
-          ? { ...drawing, x: mirrorX(drawing.x, center.x) }
+          ? {
+              ...drawing,
+              x: mirrorX(drawing.x, center.x),
+              radiusX: isCircularShapeDrawingTool(drawing.toolId)
+                ? -(drawing.radiusX ?? DEFAULT_SHAPE_SIZE / 2)
+                : drawing.radiusX,
+            }
           : drawing
       ),
       wires: prev.wires.map((wire) => {
@@ -1644,7 +1885,8 @@ export default function CanvasViewport({
           mirroredPoints,
           wire.strokeColor ?? DEFAULT_STROKE_COLOR,
           normalizeWireStrokeWidth(wire.strokeWidth),
-          normalizeWireDash(wire.dash)
+          normalizeWireDash(wire.dash),
+          wire.arrowEnd === true
         );
       }),
     }));
@@ -1709,6 +1951,7 @@ export default function CanvasViewport({
       },
       serializeScene,
       serializeSceneToSvg,
+      serializeSceneToPng,
       loadScene,
     }),
     [
@@ -1719,6 +1962,7 @@ export default function CanvasViewport({
       pasteSelection,
       redo,
       serializeScene,
+      serializeSceneToPng,
       serializeSceneToSvg,
       setZoomLevel,
       undo,
@@ -1892,12 +2136,18 @@ export default function CanvasViewport({
                 toolId: activeDrawingTool,
                 x: snapped.x,
                 y: snapped.y,
-                rotation: placementRotation,
+                rotation: isShapeDrawingTool(activeDrawingTool) ? 0 : placementRotation,
                 text: defaultText,
                 strokeColor: DEFAULT_STROKE_COLOR,
                 strokeWidth: isBridgeDrawingTool(activeDrawingTool) ? drawingStrokeWidth : undefined,
                 border: false,
+                borderStrokeWidth: DEFAULT_TEXT_BORDER_STROKE_WIDTH,
+                borderGridSpacing: activeGridSpacing,
                 fontSize: LABEL_FONT_SIZE,
+                radiusX: isCircularShapeDrawingTool(activeDrawingTool) ? DEFAULT_SHAPE_SIZE / 2 : undefined,
+                radiusY: isCircularShapeDrawingTool(activeDrawingTool) ? 0 : undefined,
+                shapeWidth: activeDrawingTool === 'rectangle' ? DEFAULT_SHAPE_SIZE : undefined,
+                shapeHeight: activeDrawingTool === 'rectangle' ? DEFAULT_SHAPE_SIZE : undefined,
               },
             ],
           }));
@@ -1920,12 +2170,29 @@ export default function CanvasViewport({
           ],
           drawings: [
             ...prev.drawings,
-            ...clipboard.drawings.map((drawing) => ({
-              ...drawing,
-              id: makeId('drawing'),
-              x: snapToGrid(drawing.x + snapped.x, activeGridSpacing),
-              y: snapToGrid(drawing.y + snapped.y, activeGridSpacing),
-            })),
+            ...clipboard.drawings.map((drawing) => {
+              const borderSize = drawing.toolId === 'text' && drawing.border
+                ? getGridSnappedTextBorderSize(
+                    getDrawingDisplayText(drawing),
+                    drawing.fontSize,
+                    activeGridSpacing,
+                    drawing.borderWidth
+                  )
+                : null;
+              return {
+                ...drawing,
+                id: makeId('drawing'),
+                x: snapToGrid(drawing.x + snapped.x, activeGridSpacing),
+                y: snapToGrid(drawing.y + snapped.y, activeGridSpacing),
+                ...(borderSize
+                  ? {
+                      borderWidth: borderSize.width,
+                      borderHeight: borderSize.height,
+                      borderGridSpacing: activeGridSpacing,
+                    }
+                  : {}),
+              };
+            }),
           ],
           wires: [
             ...prev.wires,
@@ -1938,7 +2205,8 @@ export default function CanvasViewport({
                 })),
                 wire.strokeColor ?? DEFAULT_STROKE_COLOR,
                 wire.strokeWidth ?? DEFAULT_WIRE_STROKE_WIDTH,
-                wire.dash ?? []
+                wire.dash ?? [],
+                wire.arrowEnd === true
               )
             ),
           ],
@@ -2107,6 +2375,120 @@ export default function CanvasViewport({
     [activeGridSpacing, updateScene]
   );
 
+  const handleShapeHandleDragStart = useCallback(
+    (event: KonvaEventObject<DragEvent>) => {
+      event.cancelBubble = true;
+      captureDragHistory();
+    },
+    [captureDragHistory]
+  );
+
+  const finishShapeHandleDrag = useCallback((event: KonvaEventObject<DragEvent>) => {
+    event.cancelBubble = true;
+    dragHistoryCapturedRef.current = false;
+  }, []);
+
+  const handleCircleCenterDrag = useCallback(
+    (event: KonvaEventObject<DragEvent>) => {
+      if (!selectedShapeDrawing || !isCircularShapeDrawingTool(selectedShapeDrawing.toolId)) {
+        return;
+      }
+      event.cancelBubble = true;
+      const x = snapToGrid(event.target.x(), activeGridSpacing);
+      const y = snapToGrid(event.target.y(), activeGridSpacing);
+      event.target.position({ x, y });
+      updateScene((prev) => ({
+        ...prev,
+        drawings: prev.drawings.map((drawing) =>
+          drawing.id === selectedShapeDrawing.id ? { ...drawing, x, y } : drawing
+        ),
+      }), false);
+    },
+    [activeGridSpacing, selectedShapeDrawing, updateScene]
+  );
+
+  const handleCircleRadiusDrag = useCallback(
+    (event: KonvaEventObject<DragEvent>) => {
+      if (!selectedShapeDrawing || !isCircularShapeDrawingTool(selectedShapeDrawing.toolId)) {
+        return;
+      }
+      event.cancelBubble = true;
+      const x = snapToGrid(event.target.x(), activeGridSpacing);
+      const y = snapToGrid(event.target.y(), activeGridSpacing);
+      if (x === selectedShapeDrawing.x && y === selectedShapeDrawing.y) {
+        const radiusX = selectedShapeDrawing.radiusX ?? DEFAULT_SHAPE_SIZE / 2;
+        const radiusY = selectedShapeDrawing.radiusY ?? 0;
+        event.target.position({
+          x: selectedShapeDrawing.x + radiusX,
+          y: selectedShapeDrawing.y + radiusY,
+        });
+        return;
+      }
+      event.target.position({ x, y });
+      updateScene((prev) => ({
+        ...prev,
+        drawings: prev.drawings.map((drawing) =>
+          drawing.id === selectedShapeDrawing.id
+            ? {
+                ...drawing,
+                radiusX: x - selectedShapeDrawing.x,
+                radiusY: y - selectedShapeDrawing.y,
+              }
+            : drawing
+        ),
+      }), false);
+    },
+    [activeGridSpacing, selectedShapeDrawing, updateScene]
+  );
+
+  const handleRectangleCornerDrag = useCallback(
+    (corner: 'top-left' | 'bottom-right') => (event: KonvaEventObject<DragEvent>) => {
+      if (!selectedShapeDrawing || selectedShapeDrawing.toolId !== 'rectangle') {
+        return;
+      }
+      event.cancelBubble = true;
+      const size = getRectangleSize(selectedShapeDrawing);
+      const topLeft = {
+        x: selectedShapeDrawing.x - size.width / 2,
+        y: selectedShapeDrawing.y - size.height / 2,
+      };
+      const bottomRight = {
+        x: selectedShapeDrawing.x + size.width / 2,
+        y: selectedShapeDrawing.y + size.height / 2,
+      };
+      const snapped = {
+        x: snapToGrid(event.target.x(), activeGridSpacing),
+        y: snapToGrid(event.target.y(), activeGridSpacing),
+      };
+      const nextTopLeft = corner === 'top-left'
+        ? {
+            x: Math.min(snapped.x, bottomRight.x - activeGridSpacing),
+            y: Math.min(snapped.y, bottomRight.y - activeGridSpacing),
+          }
+        : topLeft;
+      const nextBottomRight = corner === 'bottom-right'
+        ? {
+            x: Math.max(snapped.x, topLeft.x + activeGridSpacing),
+            y: Math.max(snapped.y, topLeft.y + activeGridSpacing),
+          }
+        : bottomRight;
+      const x = (nextTopLeft.x + nextBottomRight.x) / 2;
+      const y = (nextTopLeft.y + nextBottomRight.y) / 2;
+      const shapeWidth = nextBottomRight.x - nextTopLeft.x;
+      const shapeHeight = nextBottomRight.y - nextTopLeft.y;
+      event.target.position(corner === 'top-left' ? nextTopLeft : nextBottomRight);
+      updateScene((prev) => ({
+        ...prev,
+        drawings: prev.drawings.map((drawing) =>
+          drawing.id === selectedShapeDrawing.id
+            ? { ...drawing, x, y, shapeWidth, shapeHeight }
+            : drawing
+        ),
+      }), false);
+    },
+    [activeGridSpacing, selectedShapeDrawing, updateScene]
+  );
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -2163,7 +2545,8 @@ export default function CanvasViewport({
                   wireDraft,
                   DEFAULT_STROKE_COLOR,
                   wireStrokeWidth,
-                  wireDash
+                  wireDash,
+                  wireArrowEnd
                 ),
               ],
             }));
@@ -2220,7 +2603,8 @@ export default function CanvasViewport({
                 : component
             ),
             drawings: prev.drawings.map((drawing) =>
-              selectedDrawingIdsRef.current.includes(drawing.id)
+              selectedDrawingIdsRef.current.includes(drawing.id) &&
+              !isShapeDrawingTool(drawing.toolId)
                 ? { ...drawing, rotation: rotateBy90(drawing.rotation) }
                 : drawing
             ),
@@ -2266,6 +2650,7 @@ export default function CanvasViewport({
     undo,
     updateScene,
     wireDash,
+    wireArrowEnd,
     wireDraft,
     wireStrokeWidth,
   ]);
@@ -2394,15 +2779,30 @@ export default function CanvasViewport({
                   y={wire.y}
                   onMouseDown={handleEntityMouseDown('wire', wire.id)}
                 >
-                  <Line
-                    points={relativePoints}
-                    stroke={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
-                    strokeWidth={lineWidth}
-                    dash={lineDash}
-                    lineJoin="round"
-                    lineCap="round"
-                    hitStrokeWidth={Math.max(6, lineWidth + 4)}
-                  />
+                  {wire.arrowEnd ? (
+                    <Arrow
+                      points={getWireArrowRenderPoints(wire.vertices).flatMap((point) => [point.x, point.y])}
+                      stroke={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
+                      fill={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
+                      strokeWidth={lineWidth}
+                      dash={lineDash}
+                      pointerLength={WIRE_ARROW_POINTER_LENGTH}
+                      pointerWidth={WIRE_ARROW_POINTER_WIDTH}
+                      lineJoin="miter"
+                      lineCap="round"
+                      hitStrokeWidth={Math.max(6, lineWidth + 4)}
+                    />
+                  ) : (
+                    <Line
+                      points={relativePoints}
+                      stroke={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
+                      strokeWidth={lineWidth}
+                      dash={lineDash}
+                      lineJoin="round"
+                      lineCap="round"
+                      hitStrokeWidth={Math.max(6, lineWidth + 4)}
+                    />
+                  )}
                   {isSelected && !selectedTool && !isPasteMode &&
                     wire.vertices.map((point, index) => (
                       <Circle
@@ -2414,7 +2814,7 @@ export default function CanvasViewport({
                         stroke="#4f80ff"
                         strokeWidth={1}
                         draggable={true}
-                    onDragStart={handleWirePointDragStart}
+                        onDragStart={handleWirePointDragStart}
                         onDragMove={handleWirePointDragMove(wire.id, index)}
                         onDragEnd={handleWirePointDragEnd(wire.id, index)}
                       />
@@ -2435,45 +2835,160 @@ export default function CanvasViewport({
             />
           ))}
 
+          {selectedShapeDrawing && !selectedTool && !isPasteMode &&
+            isCircularShapeDrawingTool(selectedShapeDrawing.toolId) && (
+              <>
+                <Circle
+                  x={selectedShapeDrawing.x}
+                  y={selectedShapeDrawing.y}
+                  radius={4}
+                  fill="#ffffff"
+                  stroke="#4f80ff"
+                  strokeWidth={1}
+                  draggable={true}
+                  onMouseDown={(event) => { event.cancelBubble = true; }}
+                  onDragStart={handleShapeHandleDragStart}
+                  onDragMove={handleCircleCenterDrag}
+                  onDragEnd={finishShapeHandleDrag}
+                />
+                <Circle
+                  x={selectedShapeDrawing.x + (selectedShapeDrawing.radiusX ?? DEFAULT_SHAPE_SIZE / 2)}
+                  y={selectedShapeDrawing.y + (selectedShapeDrawing.radiusY ?? 0)}
+                  radius={4}
+                  fill="#ffffff"
+                  stroke="#4f80ff"
+                  strokeWidth={1}
+                  draggable={true}
+                  onMouseDown={(event) => { event.cancelBubble = true; }}
+                  onDragStart={handleShapeHandleDragStart}
+                  onDragMove={handleCircleRadiusDrag}
+                  onDragEnd={finishShapeHandleDrag}
+                />
+              </>
+            )}
+
+          {selectedShapeDrawing && !selectedTool && !isPasteMode &&
+            selectedShapeDrawing.toolId === 'rectangle' && (() => {
+              const size = getRectangleSize(selectedShapeDrawing);
+              return (
+                <>
+                  <Circle
+                    x={selectedShapeDrawing.x - size.width / 2}
+                    y={selectedShapeDrawing.y - size.height / 2}
+                    radius={4}
+                    fill="#ffffff"
+                    stroke="#4f80ff"
+                    strokeWidth={1}
+                    draggable={true}
+                    onMouseDown={(event) => { event.cancelBubble = true; }}
+                    onDragStart={handleShapeHandleDragStart}
+                    onDragMove={handleRectangleCornerDrag('top-left')}
+                    onDragEnd={finishShapeHandleDrag}
+                  />
+                  <Circle
+                    x={selectedShapeDrawing.x + size.width / 2}
+                    y={selectedShapeDrawing.y + size.height / 2}
+                    radius={4}
+                    fill="#ffffff"
+                    stroke="#4f80ff"
+                    strokeWidth={1}
+                    draggable={true}
+                    onMouseDown={(event) => { event.cancelBubble = true; }}
+                    onDragStart={handleShapeHandleDragStart}
+                    onDragMove={handleRectangleCornerDrag('bottom-right')}
+                    onDragEnd={finishShapeHandleDrag}
+                  />
+                </>
+              );
+            })()}
+
           {isPasteMode && clipboard && hoverPoint &&
-            clipboard.wires.map((wire, wireIndex) => (
+            clipboard.wires.map((wire, wireIndex) =>
+              wire.arrowEnd ? (
+                <Arrow
+                  key={`paste-wire-${wireIndex}`}
+                  points={getWireArrowRenderPoints(wire.points)
+                    .flatMap((point) => [point.x + hoverPoint.x, point.y + hoverPoint.y])}
+                  stroke="#888888"
+                  fill="#888888"
+                  strokeWidth={normalizeWireStrokeWidth(wire.strokeWidth)}
+                  dash={normalizeWireDash(wire.dash)}
+                  pointerLength={WIRE_ARROW_POINTER_LENGTH}
+                  pointerWidth={WIRE_ARROW_POINTER_WIDTH}
+                  lineJoin="miter"
+                  lineCap="round"
+                  opacity={0.6}
+                  listening={false}
+                />
+              ) : (
+                <Line
+                  key={`paste-wire-${wireIndex}`}
+                  points={wire.points.flatMap((point) => [point.x + hoverPoint.x, point.y + hoverPoint.y])}
+                  stroke="#888888"
+                  strokeWidth={normalizeWireStrokeWidth(wire.strokeWidth)}
+                  dash={normalizeWireDash(wire.dash)}
+                  lineJoin="round"
+                  lineCap="round"
+                  opacity={0.6}
+                  listening={false}
+                />
+              )
+            )}
+
+          {wireDraft && wireDraft.length >= 2 && (
+            wireArrowEnd ? (
+              <Arrow
+                points={getWireArrowRenderPoints(wireDraft).flatMap((point) => [point.x, point.y])}
+                stroke={DEFAULT_STROKE_COLOR}
+                fill={DEFAULT_STROKE_COLOR}
+                strokeWidth={wireStrokeWidth}
+                dash={wireDash}
+                pointerLength={WIRE_ARROW_POINTER_LENGTH}
+                pointerWidth={WIRE_ARROW_POINTER_WIDTH}
+                lineJoin="miter"
+                lineCap="round"
+                listening={false}
+              />
+            ) : (
               <Line
-                key={`paste-wire-${wireIndex}`}
-                points={wire.points
-                  .flatMap((point) => [point.x + hoverPoint.x, point.y + hoverPoint.y])}
+                points={wireDraft.flatMap((point) => [point.x, point.y])}
+                stroke={DEFAULT_STROKE_COLOR}
+                strokeWidth={wireStrokeWidth}
+                dash={wireDash}
+                lineJoin="round"
+                lineCap="round"
+                listening={false}
+              />
+            )
+          )}
+
+          {activeDrawingTool === 'wire' && wireDraft && wireHoverPoint && wireDraft.length >= 1 && (
+            wireArrowEnd ? (
+              <Arrow
+                points={getWireArrowRenderPoints([...wireDraft, wireHoverPoint]).flatMap((point) => [point.x, point.y])}
                 stroke="#888888"
-                strokeWidth={normalizeWireStrokeWidth(wire.strokeWidth)}
-                dash={normalizeWireDash(wire.dash)}
+                fill="#888888"
+                strokeWidth={wireStrokeWidth}
+                dash={wireDash}
+                pointerLength={WIRE_ARROW_POINTER_LENGTH}
+                pointerWidth={WIRE_ARROW_POINTER_WIDTH}
+                lineJoin="miter"
+                lineCap="round"
+                opacity={0.6}
+                listening={false}
+              />
+            ) : (
+              <Line
+                points={[...wireDraft, wireHoverPoint].flatMap((point) => [point.x, point.y])}
+                stroke="#888888"
+                strokeWidth={wireStrokeWidth}
+                dash={wireDash}
                 lineJoin="round"
                 lineCap="round"
                 opacity={0.6}
                 listening={false}
               />
-            ))}
-
-          {wireDraft && wireDraft.length >= 2 && (
-            <Line
-              points={wireDraft.flatMap((point) => [point.x, point.y])}
-              stroke={DEFAULT_STROKE_COLOR}
-              strokeWidth={wireStrokeWidth}
-              dash={wireDash}
-              lineJoin="round"
-              lineCap="round"
-              listening={false}
-            />
-          )}
-
-          {activeDrawingTool === 'wire' && wireDraft && wireHoverPoint && wireDraft.length >= 1 && (
-            <Line
-              points={[...wireDraft, wireHoverPoint].flatMap((point) => [point.x, point.y])}
-              stroke="#888888"
-              strokeWidth={wireStrokeWidth}
-              dash={wireDash}
-              lineJoin="round"
-              lineCap="round"
-              opacity={0.6}
-              listening={false}
-            />
+            )
           )}
 
           {activeDrawingTool === 'wire' && wireHoverPoint && (
@@ -2495,7 +3010,7 @@ export default function CanvasViewport({
                 toolId: activeDrawingTool as NonWireDrawingToolId,
                 x: hoverPoint.x,
                 y: hoverPoint.y,
-                rotation: placementRotation,
+                rotation: isShapeDrawingTool(activeDrawingTool) ? 0 : placementRotation,
                 strokeWidth: isBridgeDrawingTool(activeDrawingTool as NonWireDrawingToolId)
                   ? drawingStrokeWidth
                   : undefined,
@@ -2518,6 +3033,7 @@ export default function CanvasViewport({
                   y: drawing.y + hoverPoint.y,
                 }}
                 isSelected={false}
+                hideText={drawing.toolId === 'text' && hasLatexSyntax(getDrawingDisplayText(drawing))}
                 listening={false}
                 strokeColor="#888888"
                 opacity={0.6}
@@ -2532,9 +3048,7 @@ export default function CanvasViewport({
           const content = getDrawingDisplayText(drawing);
           const isLatex = hasLatexSyntax(content);
           const fontSize = getTextSymbolFontSize(drawing.fontSize);
-          const metrics = measureRenderedText(content, fontSize);
-          const boxWidth = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
-          const boxHeight = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+          const { width: boxWidth, height: boxHeight } = getDrawingTextBoxSize(drawing);
           const color = drawing.strokeColor ?? DEFAULT_STROKE_COLOR;
           const showBorder = drawing.border === true;
           return (
@@ -2548,7 +3062,10 @@ export default function CanvasViewport({
                 height: `${boxHeight}px`,
                 transform: `translate(-50%, -50%) rotate(${drawing.rotation}deg) scale(${camera.zoom})`,
                 color,
-                border: showBorder ? `1.2px solid ${color}` : 'none',
+                border: showBorder
+                  ? `${normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth)}px solid ${color}`
+                  : 'none',
+                boxSizing: 'border-box',
               }}
             >
               <div
@@ -2565,6 +3082,48 @@ export default function CanvasViewport({
             </div>
           );
         })}
+        {isPasteMode && clipboard && hoverPoint &&
+          clipboard.drawings.map((drawing, drawingIndex) => {
+            if (drawing.toolId !== 'text') {
+              return null;
+            }
+            const content = getDrawingDisplayText(drawing);
+            if (!hasLatexSyntax(content)) {
+              return null;
+            }
+            const fontSize = getTextSymbolFontSize(drawing.fontSize);
+            const { width: boxWidth, height: boxHeight } = getDrawingTextBoxSize({
+              id: `paste-text-${drawingIndex}`,
+              ...drawing,
+            });
+            return (
+              <div
+                key={`paste-latex-${drawingIndex}`}
+                className={styles.latexNode}
+                style={{
+                  left: camera.offsetX + (drawing.x + hoverPoint.x) * camera.zoom,
+                  top: camera.offsetY + (drawing.y + hoverPoint.y) * camera.zoom,
+                  width: `${boxWidth}px`,
+                  height: `${boxHeight}px`,
+                  transform: `translate(-50%, -50%) rotate(${drawing.rotation}deg) scale(${camera.zoom})`,
+                  color: '#888888',
+                  opacity: 0.6,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div
+                  className={styles.latexContent}
+                  style={{
+                    width: `${boxWidth - LABEL_PADDING_X * 2}px`,
+                    height: `${boxHeight - LABEL_PADDING_Y * 2}px`,
+                    fontSize: `${fontSize}px`,
+                  }}
+                >
+                  <Latex>{content}</Latex>
+                </div>
+              </div>
+            );
+          })}
       </div>
 
       {selectionRect.visible && (
@@ -2661,6 +3220,14 @@ export default function CanvasViewport({
               </div>
             )}
           </div>
+          <label className={styles.toggleLabel}>
+            Arrow end
+            <input
+              type="checkbox"
+              checked={wireArrowEnd}
+              onChange={(event) => setWireArrowEnd(event.target.checked)}
+            />
+          </label>
         </div>
       )}
 
@@ -2825,6 +3392,14 @@ export default function CanvasViewport({
                   </div>
                 )}
               </div>
+              <label className={styles.toggleLabel}>
+                Arrow end
+                <input
+                  type="checkbox"
+                  checked={selectedWireArrowEnd}
+                  onChange={(event) => applySelectedWireArrowEnd(event.target.checked)}
+                />
+              </label>
             </>
           )}
           {selectedTextDrawing && (
@@ -2837,6 +3412,39 @@ export default function CanvasViewport({
                   onChange={(event) => applySelectedTextBorder(event.target.checked)}
                 />
               </label>
+              {selectedTextBorder && (
+                <div className={styles.menuGroup}>
+                  <button
+                    type="button"
+                    className={styles.menuButton}
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setIsWireDashMenuOpen(false);
+                      setIsWireWidthMenuOpen((prev) => !prev);
+                    }}
+                  >
+                    Border thickness: {selectedTextBorderStrokeWidth}
+                  </button>
+                  {isWireWidthMenuOpen && (
+                    <div className={styles.upwardMenu} onPointerDown={(event) => event.stopPropagation()}>
+                      {WIRE_STROKE_WIDTH_OPTIONS.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={`${styles.menuItemButton} ${selectedTextBorderStrokeWidth === value ? styles.menuItemButtonActive : ''}`}
+                          onClick={() => {
+                            applySelectedTextBorderStrokeWidth(value);
+                            setIsWireWidthMenuOpen(false);
+                          }}
+                        >
+                          {value}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className={styles.fontControls}>
                 <button
                   type="button"

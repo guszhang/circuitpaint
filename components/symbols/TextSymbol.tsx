@@ -20,6 +20,9 @@ interface TextSymbolProps {
   isSelected: boolean;
   text?: string;
   border?: boolean;
+  borderWidth?: number;
+  borderHeight?: number;
+  borderStrokeWidth?: number;
   fontSize?: number;
   draggable?: boolean;
   strokeColor?: string;
@@ -40,6 +43,9 @@ export default function TextSymbol({
   isSelected,
   text = 'Text',
   border = false,
+  borderWidth,
+  borderHeight,
+  borderStrokeWidth = 1,
   fontSize,
   draggable = false,
   strokeColor,
@@ -55,8 +61,10 @@ export default function TextSymbol({
   const lineColor = strokeColor ?? 'black';
   const resolvedFontSize = getTextSymbolFontSize(fontSize);
   const metrics = measureRenderedText(text, resolvedFontSize);
-  const boxWidth = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
-  const boxHeight = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+  const contentWidth = Math.max(24, metrics.width + LABEL_PADDING_X * 2);
+  const contentHeight = Math.max(16, metrics.height + LABEL_PADDING_Y * 2);
+  const boxWidth = border && borderWidth && borderWidth > 0 ? borderWidth : contentWidth;
+  const boxHeight = border && borderHeight && borderHeight > 0 ? borderHeight : contentHeight;
   const labelBoxX = -boxWidth / 2;
   const labelBoxY = -boxHeight / 2;
 
@@ -88,7 +96,7 @@ export default function TextSymbol({
           listening={false}
         />
       )}
-      {border && <Rect x={labelBoxX} y={labelBoxY} width={boxWidth} height={boxHeight} stroke={lineColor} strokeWidth={1.2} />}
+      {border && <Rect x={labelBoxX} y={labelBoxY} width={boxWidth} height={boxHeight} stroke={lineColor} strokeWidth={borderStrokeWidth} />}
       {!listening && (
         <Text
           x={labelBoxX + LABEL_PADDING_X}

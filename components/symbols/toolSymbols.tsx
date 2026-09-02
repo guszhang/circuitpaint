@@ -7,6 +7,7 @@ import AndGateSymbol from './AndGateSymbol';
 import BridgeSymbol from './BridgeSymbol';
 import CapacitorSymbol from './CapacitorSymbol';
 import ChassisGroundSymbol from './ChassisGroundSymbol';
+import CircleShapeSymbol from './CircleShapeSymbol';
 import ControlledCurrentSourceSymbol from './ControlledCurrentSourceSymbol';
 import ControlledVoltageSourceSymbol from './ControlledVoltageSourceSymbol';
 import CurrentAnnotationSymbol from './CurrentAnnotationSymbol';
@@ -32,9 +33,11 @@ import PolarisedCapacitorSymbol from './PolarisedCapacitorSymbol';
 import PortSymbol from './PortSymbol';
 import PotentiometerSymbol from './PotentiometerSymbol';
 import ResistorSymbol from './ResistorSymbol';
+import RectangleShapeSymbol from './RectangleShapeSymbol';
 import SchottkyDiodeSymbol from './SchottkyDiodeSymbol';
 import SourceSymbol from './SourceSymbol';
 import SparkGapSymbol from './SparkGapSymbol';
+import SumShapeSymbol from './SumShapeSymbol';
 import SwitchSymbol from './SwitchSymbol';
 import TextSymbol from './TextSymbol';
 import TransformerSymbol from './TransformerSymbol';
@@ -90,6 +93,9 @@ const TOOL_SYMBOL_COMPONENT_BY_ID: Record<ToolId, React.ComponentType<any>> = {
   'half-circle': HalfCircleSymbol,
   'port': PortSymbol,
   'wire': WireSymbol,
+  'circle': CircleShapeSymbol,
+  'sum': SumShapeSymbol,
+  'rectangle': RectangleShapeSymbol,
   'text': TextSymbol,
   'voltage-plus-annotation': VoltagePlusAnnotationSymbol,
   'voltage-minus-annotation': VoltageMinusAnnotationSymbol,
@@ -114,6 +120,9 @@ const TOOL_ICON_SCALE_BY_ID: Partial<Record<ToolId, number>> = {
   'half-circle': 1.1,
   port: 1.6,
   wire: 1,
+  circle: 0.5,
+  sum: 0.5,
+  rectangle: 0.5,
   text: 0.42,
 };
 

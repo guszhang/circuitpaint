@@ -25,7 +25,15 @@ export interface DrawingEntity {
   strokeColor?: string;
   strokeWidth?: number;
   border?: boolean;
+  borderWidth?: number;
+  borderHeight?: number;
+  borderStrokeWidth?: number;
+  borderGridSpacing?: number;
   fontSize?: number;
+  radiusX?: number;
+  radiusY?: number;
+  shapeWidth?: number;
+  shapeHeight?: number;
 }
 
 export interface WireEntity {
@@ -36,6 +44,7 @@ export interface WireEntity {
   strokeColor?: string;
   strokeWidth?: number;
   dash?: number[];
+  arrowEnd?: boolean;
 }
 
 export interface SceneData {
@@ -54,5 +63,11 @@ export interface CanvasFile {
 export interface ClipboardData {
   components: Omit<ComponentEntity, 'id'>[];
   drawings: Omit<DrawingEntity, 'id'>[];
-  wires: Array<{ points: Point[]; strokeColor?: string; strokeWidth?: number; dash?: number[] }>;
+  wires: Array<{
+    points: Point[];
+    strokeColor?: string;
+    strokeWidth?: number;
+    dash?: number[];
+    arrowEnd?: boolean;
+  }>;
 }

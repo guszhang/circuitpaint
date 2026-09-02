@@ -103,8 +103,32 @@ function parseCanvasFile(raw: unknown): CanvasFile {
     if (item.border !== undefined && !isBoolean(item.border)) {
       throw new Error('Invalid drawing border value.');
     }
+    if (item.borderWidth !== undefined && !isNumber(item.borderWidth)) {
+      throw new Error('Invalid drawing border width.');
+    }
+    if (item.borderHeight !== undefined && !isNumber(item.borderHeight)) {
+      throw new Error('Invalid drawing border height.');
+    }
+    if (item.borderStrokeWidth !== undefined && !isNumber(item.borderStrokeWidth)) {
+      throw new Error('Invalid drawing border thickness.');
+    }
+    if (item.borderGridSpacing !== undefined && !isNumber(item.borderGridSpacing)) {
+      throw new Error('Invalid drawing border grid spacing.');
+    }
     if (item.fontSize !== undefined && !isNumber(item.fontSize)) {
       throw new Error('Invalid drawing font size.');
+    }
+    if (item.radiusX !== undefined && !isNumber(item.radiusX)) {
+      throw new Error('Invalid circle radius handle.');
+    }
+    if (item.radiusY !== undefined && !isNumber(item.radiusY)) {
+      throw new Error('Invalid circle radius handle.');
+    }
+    if (item.shapeWidth !== undefined && !isNumber(item.shapeWidth)) {
+      throw new Error('Invalid rectangle width.');
+    }
+    if (item.shapeHeight !== undefined && !isNumber(item.shapeHeight)) {
+      throw new Error('Invalid rectangle height.');
     }
     const normalizedBorder = item.toolId === 'label' ? true : item.border;
     return {
@@ -117,7 +141,15 @@ function parseCanvasFile(raw: unknown): CanvasFile {
       strokeColor: item.strokeColor,
       strokeWidth: item.strokeWidth,
       border: normalizedBorder,
+      borderWidth: item.borderWidth,
+      borderHeight: item.borderHeight,
+      borderStrokeWidth: item.borderStrokeWidth,
+      borderGridSpacing: item.borderGridSpacing,
       fontSize: item.fontSize,
+      radiusX: item.radiusX,
+      radiusY: item.radiusY,
+      shapeWidth: item.shapeWidth,
+      shapeHeight: item.shapeHeight,
     };
   });
 
@@ -144,6 +176,9 @@ function parseCanvasFile(raw: unknown): CanvasFile {
     if (item.dash !== undefined && !isNumberArray(item.dash)) {
       throw new Error('Invalid wire dash pattern.');
     }
+    if (item.arrowEnd !== undefined && !isBoolean(item.arrowEnd)) {
+      throw new Error('Invalid wire arrow setting.');
+    }
     return {
       id: item.id,
       x: item.x,
@@ -152,6 +187,7 @@ function parseCanvasFile(raw: unknown): CanvasFile {
       strokeColor: item.strokeColor,
       strokeWidth: item.strokeWidth,
       dash: item.dash,
+      arrowEnd: item.arrowEnd,
     };
   });
 
@@ -370,6 +406,33 @@ export default function Home() {
     })();
   }, []);
 
+  const handleFileDownloadPng = useCallback(() => {
+    const pngBlob = viewportControlsRef.current?.serializeSceneToPng();
+    if (!pngBlob) {
+      return;
+    }
+    const timestamp = new Date()
+      .toISOString()
+      .replace('T', '-')
+      .replace('Z', '')
+      .replace(/[:.]/g, '-');
+    const filename = `circuitpaint-${timestamp}.png`;
+
+    void pngBlob
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 0);
+      })
+      .catch((error) => {
+        console.error(error);
+        window.alert('Failed to create the PNG image.');
+      });
+  }, []);
+
   const handleQuickSaveDownload = useCallback(() => {
     const data = viewportControlsRef.current?.serializeScene();
     if (!data) {
@@ -458,6 +521,7 @@ export default function Home() {
         onFileOpen={handleFileOpen}
         onFileSave={handleFileSave}
         onFileExportSvg={handleFileExportSvg}
+        onFileDownloadPng={handleFileDownloadPng}
       />
       <div className={styles.mainContent}>
         <LeftToolbar onToolSelect={handleToolSelect} selectedTool={selectedTool} />
