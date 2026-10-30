@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Arrow, Group, Line, Rect } from 'react-konva';
+import { Arrow, Group, Line } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 import { render } from 'react-dom';
 
@@ -11,7 +11,6 @@ interface NMosfetSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
-  isSelected: boolean;
   draggable?: boolean;
   strokeColor?: string;
   opacity?: number;
@@ -27,7 +26,6 @@ export default function NMosfetSymbol({
   x,
   y,
   rotation,
-  isSelected,
   draggable = false,
   strokeColor,
   opacity = 1,
@@ -55,29 +53,6 @@ export default function NMosfetSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect
-        x={-26}
-        y={-6}
-        width={52}
-        height={30}
-        fill="black"
-        opacity={0}
-        strokeWidth={0}
-        listening={true}
-      />
-      {isSelected && (
-        <Rect
-          x={-26}
-          y={-6}
-          width={52}
-          height={30}
-          stroke="#4f80ff"
-          strokeWidth={1}
-          dash={[4, 4]}
-          cornerRadius={2}
-          listening={false}
-        />
-      )}
       <Line
         points={[-8, 8, 8, 8]}
         stroke={lineColor}

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Group, Line, Rect } from 'react-konva';
+import { Group, Line } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
 type SymbolRotation = 0 | 90 | 180 | 270;
@@ -10,7 +10,6 @@ interface ChassisGroundSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
-  isSelected: boolean;
   draggable?: boolean;
   strokeColor?: string;
   opacity?: number;
@@ -26,7 +25,6 @@ export default function ChassisGroundSymbol({
   x,
   y,
   rotation,
-  isSelected,
   draggable = false,
   strokeColor,
   opacity = 1,
@@ -53,29 +51,6 @@ export default function ChassisGroundSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect
-        x={-20}
-        y={-15}
-        width={36}
-        height={30}
-        fill="black"
-        opacity={0}
-        strokeWidth={0}
-        listening={true}
-      />
-      {isSelected && (
-        <Rect
-          x={-20}
-          y={-15}
-          width={36}
-          height={30}
-          stroke="#4f80ff"
-          strokeWidth={1}
-          dash={[4, 4]}
-          cornerRadius={2}
-          listening={false}
-        />
-      )}
       <Line
         points={[0, 0, 0, -10]}
         stroke={lineColor}

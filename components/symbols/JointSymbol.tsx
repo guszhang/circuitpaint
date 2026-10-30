@@ -8,7 +8,6 @@ interface JointSymbolProps {
   x: number;
   y: number;
   rotation: 0 | 90 | 180 | 270;
-  isSelected: boolean;
   draggable?: boolean;
   strokeColor?: string;
   opacity?: number;
@@ -23,7 +22,6 @@ interface JointSymbolProps {
 export default function JointSymbol({
   x,
   y,
-  isSelected,
   draggable = false,
   strokeColor,
   opacity = 1,
@@ -48,7 +46,6 @@ export default function JointSymbol({
       onDragEnd={onDragEnd}
     >
       <Circle x={0} y={0} radius={2} fill={strokeColor ?? 'black'} />
-      {isSelected && <Circle x={0} y={0} radius={5} stroke="#4f80ff" strokeWidth={1} listening={false} />}
     </Group>
   );
 }

@@ -8,7 +8,6 @@ interface PortSymbolProps {
   x: number;
   y: number;
   rotation: 0 | 90 | 180 | 270;
-  isSelected: boolean;
   draggable?: boolean;
   strokeColor?: string;
   opacity?: number;
@@ -23,7 +22,6 @@ interface PortSymbolProps {
 export default function PortSymbol({
   x,
   y,
-  isSelected,
   draggable = false,
   strokeColor,
   opacity = 1,
@@ -48,7 +46,6 @@ export default function PortSymbol({
       onDragEnd={onDragEnd}
     >
       <Circle x={0} y={0} radius={1.5} fill="white" stroke={strokeColor ?? 'black'} strokeWidth={1} />
-      {isSelected && <Circle x={0} y={0} radius={5} stroke="#4f80ff" strokeWidth={1} listening={false} />}
     </Group>
   );
 }

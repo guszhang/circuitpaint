@@ -138,7 +138,7 @@ export default function MenuBar({
             </button>
           </div>
           <div className={styles.helpBody}>
-            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.9</div>
+            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.10</div>
 
             <div className={styles.helpMeta}>
               CircuitPaint is a lightweight schematic drawing tool developed to provide

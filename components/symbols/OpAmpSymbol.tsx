@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Group, Line, Rect } from 'react-konva';
+import { Group, Line } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
 type SymbolRotation = 0 | 90 | 180 | 270;
@@ -10,7 +10,6 @@ interface OpAmpSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
-  isSelected: boolean;
   draggable?: boolean;
   strokeColor?: string;
   opacity?: number;
@@ -26,7 +25,6 @@ export default function OpAmpSymbol({
   x,
   y,
   rotation,
-  isSelected,
   draggable = false,
   strokeColor,
   opacity = 1,
@@ -53,20 +51,6 @@ export default function OpAmpSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-26} y={-26} width={52} height={52} fill="black" opacity={0} strokeWidth={0} listening={true} />
-      {isSelected && (
-        <Rect
-          x={-26}
-          y={-26}
-          width={52}
-          height={52}
-          stroke="#4f80ff"
-          strokeWidth={1}
-          dash={[4, 4]}
-          cornerRadius={2}
-          listening={false}
-        />
-      )}
       <Line points={[-16, -16, -16, 16, 12, 0, -16, -16]} stroke={lineColor} strokeWidth={2} lineJoin="round" lineCap='round' />
       <Line points={[-20, -10, -16, -10]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />
       <Line points={[-20, 10, -16, 10]} stroke={lineColor} strokeWidth={1} lineCap="round" lineJoin="round" />    

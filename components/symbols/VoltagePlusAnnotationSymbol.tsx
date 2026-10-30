@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Group, Line, Rect } from 'react-konva';
+import { Group, Line } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
 type SymbolRotation = 0 | 90 | 180 | 270;
@@ -10,7 +10,6 @@ interface VoltagePlusAnnotationSymbolProps {
   x: number;
   y: number;
   rotation: SymbolRotation;
-  isSelected: boolean;
   draggable?: boolean;
   strokeColor?: string;
   opacity?: number;
@@ -27,7 +26,6 @@ export default function VoltagePlusAnnotationSymbol({
   x,
   y,
   rotation,
-  isSelected,
   draggable = false,
   strokeColor,
   opacity = 1,
@@ -56,10 +54,6 @@ export default function VoltagePlusAnnotationSymbol({
       onDragMove={onDragMove}
       onDragEnd={onDragEnd}
     >
-      <Rect x={-20} y={-12} width={40} height={24} fill="black" opacity={0} />
-      {isSelected && (
-        <Rect x={-20} y={-12} width={40} height={24} stroke="#4f80ff" strokeWidth={1} dash={[4, 4]} listening={false} />
-      )}
       <Line points={[-4, 0, 4, 0]} stroke={lineColor} strokeWidth={1.8} lineCap="round" />
       <Line points={[0, -4, 0, 4]} stroke={lineColor} strokeWidth={1.8} lineCap="round" />
     </Group>

@@ -17,7 +17,6 @@ import { getSceneExportFrame, sceneToSvg } from '../lib/svg';
 import {
   isComponentTool,
   isDrawingTool,
-  type ComponentToolId,
   type ToolId,
 } from '../lib/tools';
 import {
@@ -39,7 +38,23 @@ import {
 } from './canvas/types';
 import { useInteractionTriage } from './canvas/useInteractionTriage';
 import styles from './CanvasViewport.module.css';
-import { getComponentSymbolComponent, getDrawingSymbolComponent } from './symbols/toolSymbols';
+import {
+  ComponentGlyph,
+  DEFAULT_STROKE_COLOR,
+  DEFAULT_TEXT_BORDER_STROKE_WIDTH,
+  DEFAULT_WIRE_STROKE_WIDTH,
+  DrawingGlyph,
+  WIRE_STROKE_WIDTH_OPTIONS,
+  WireStroke,
+  getComponentSelectionBounds,
+  getDrawingDisplayText,
+  getDrawingSelectionBounds,
+  isBridgeDrawingTool,
+  isCircularShapeDrawingTool,
+  normalizeTextBorderStrokeWidth,
+  normalizeWireDash,
+  normalizeWireStrokeWidth,
+} from './canvas/glyphs';
 import {
   LABEL_FONT_SIZE,
   LABEL_FONT_FAMILY,
@@ -81,10 +96,6 @@ const DRAG_THRESHOLD = 5;
 const CANVAS_FILE_VERSION = 1;
 const rotateBy90 = (rotation: Rotation) => ((rotation + 90) % 360) as Rotation;
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-const DEFAULT_STROKE_COLOR = '#000000';
-const DEFAULT_WIRE_STROKE_WIDTH = 1;
-const WIRE_STROKE_WIDTH_OPTIONS = [1, 2, 3, 5] as const;
-const DEFAULT_TEXT_BORDER_STROKE_WIDTH = 1;
 const DEFAULT_SHAPE_SIZE = 40;
 const WIRE_DASH_OPTIONS = [
   { id: 'solid', label: 'Solid', dash: [] as number[] },
@@ -391,19 +402,6 @@ function normalizeColorForInput(color: string | undefined) {
   return DEFAULT_STROKE_COLOR;
 }
 
-function normalizeWireStrokeWidth(value: number | undefined) {
-  if (!value || !Number.isFinite(value)) {
-    return DEFAULT_WIRE_STROKE_WIDTH;
-  }
-  return WIRE_STROKE_WIDTH_OPTIONS.includes(value as (typeof WIRE_STROKE_WIDTH_OPTIONS)[number])
-    ? value
-    : DEFAULT_WIRE_STROKE_WIDTH;
-}
-
-function normalizeTextBorderStrokeWidth(value: number | undefined) {
-  return normalizeWireStrokeWidth(value ?? DEFAULT_TEXT_BORDER_STROKE_WIDTH);
-}
-
 function getDrawingTextBoxSize(drawing: DrawingEntity) {
   const content = getTextBoxSize(getDrawingDisplayText(drawing), drawing.fontSize);
   if (!drawing.border) {
@@ -415,16 +413,8 @@ function getDrawingTextBoxSize(drawing: DrawingEntity) {
   };
 }
 
-function isBridgeDrawingTool(toolId: NonWireDrawingToolId | DrawingEntity['toolId']) {
-  return toolId === 'bridge' || toolId === 'half-circle';
-}
-
 function isShapeDrawingTool(toolId: NonWireDrawingToolId | DrawingEntity['toolId']) {
   return toolId === 'circle' || toolId === 'sum' || toolId === 'rectangle';
-}
-
-function isCircularShapeDrawingTool(toolId: NonWireDrawingToolId | DrawingEntity['toolId']) {
-  return toolId === 'circle' || toolId === 'sum';
 }
 
 function getCircleRadius(drawing: Pick<DrawingEntity, 'radiusX' | 'radiusY'>) {
@@ -438,13 +428,6 @@ function getRectangleSize(drawing: Pick<DrawingEntity, 'shapeWidth' | 'shapeHeig
   };
 }
 
-function normalizeWireDash(value: number[] | undefined) {
-  if (!Array.isArray(value) || value.length === 0) {
-    return [] as number[];
-  }
-  return value.filter((item) => Number.isFinite(item) && item >= 0);
-}
-
 function areDashArraysEqual(a: number[], b: number[]) {
   return a.length === b.length && a.every((item, index) => item === b[index]);
 }
@@ -452,13 +435,6 @@ function areDashArraysEqual(a: number[], b: number[]) {
 function getWireDashOptionId(value: number[]) {
   const matched = WIRE_DASH_OPTIONS.find((option) => areDashArraysEqual(option.dash, value));
   return matched?.id ?? 'solid';
-}
-
-function getDrawingDisplayText(drawing: Pick<DrawingEntity, 'toolId' | 'text'>) {
-  if (drawing.toolId === 'text') {
-    return drawing.text?.trim() || 'Text';
-  }
-  return '';
 }
 
 function cloneScene(scene: SceneData): SceneData {
@@ -627,25 +603,13 @@ function getSnappedWorld(pointer: Point, camera: Camera, spacing: number): Point
 }
 
 function getComponentBounds(component: ComponentEntity) {
-  const isHorizontal = component.rotation % 180 === 0;
-  const halfWidth = isHorizontal ? 26 : 14;
-  const halfHeight = isHorizontal ? 14 : 26;
-  return {
-    minX: component.x - halfWidth,
-    maxX: component.x + halfWidth,
-    minY: component.y - halfHeight,
-    maxY: component.y + halfHeight,
-  };
+  return getComponentSelectionBounds(component);
 }
 
 function getDrawingBounds(drawing: DrawingEntity) {
-  if (drawing.toolId === 'joint' || drawing.toolId === 'port') {
-    return {
-      minX: drawing.x - 4,
-      maxX: drawing.x + 4,
-      minY: drawing.y - 4,
-      maxY: drawing.y + 4,
-    };
+  const fenceBounds = getDrawingSelectionBounds(drawing);
+  if (fenceBounds) {
+    return fenceBounds;
   }
 
   if (drawing.toolId === 'text') {
@@ -686,10 +650,10 @@ function getDrawingBounds(drawing: DrawingEntity) {
   }
 
   return {
-    minX: drawing.x - 20,
-    maxX: drawing.x + 20,
-    minY: drawing.y - 14,
-    maxY: drawing.y + 14,
+    minX: drawing.x,
+    maxX: drawing.x,
+    minY: drawing.y,
+    maxY: drawing.y,
   };
 }
 
@@ -705,16 +669,21 @@ function getWireBounds(wire: WireEntity) {
   };
 }
 
-function getSelectionBounds(
+// Bounds of the selection's anchor points (entity origins and wire vertices).
+// Mirroring about their centre keeps grid-snapped anchors on the grid.
+function getSelectionAnchorBounds(
   scene: SceneData,
   selection: { componentIds: Set<string>; drawingIds: Set<string>; wireIds: Set<string> }
 ) {
+  const pointBounds = (point: Point) => ({ minX: point.x, maxX: point.x, minY: point.y, maxY: point.y });
   const boundsList = [
     ...scene.components
       .filter((component) => selection.componentIds.has(component.id))
-      .map(getComponentBounds),
-    ...scene.drawings.filter((drawing) => selection.drawingIds.has(drawing.id)).map(getDrawingBounds),
-    ...scene.wires.filter((wire) => selection.wireIds.has(wire.id)).map(getWireBounds),
+      .map(pointBounds),
+    ...scene.drawings.filter((drawing) => selection.drawingIds.has(drawing.id)).map(pointBounds),
+    ...scene.wires
+      .filter((wire) => selection.wireIds.has(wire.id))
+      .flatMap((wire) => getAbsoluteWirePoints(wire).map(pointBounds)),
   ];
 
   if (boundsList.length === 0) {
@@ -741,124 +710,6 @@ function intersects(
     bounds.minX <= rect.maxX &&
     bounds.maxY >= rect.minY &&
     bounds.minY <= rect.maxY
-  );
-}
-
-function ComponentGlyph({
-  toolId,
-  x,
-  y,
-  rotation,
-  flipped = false,
-  isSelected,
-  draggable = false,
-  listening = true,
-  strokeColor = 'black',
-  opacity = 1,
-  onMouseDown,
-  dragBoundFunc,
-  onDragStart,
-  onDragMove,
-  onDragEnd,
-}: {
-  toolId: ComponentToolId;
-  x: number;
-  y: number;
-  rotation: Rotation;
-  flipped?: boolean;
-  isSelected: boolean;
-  draggable?: boolean;
-  listening?: boolean;
-  strokeColor?: string;
-  opacity?: number;
-  onMouseDown?: (e: KonvaEventObject<MouseEvent>) => void;
-  dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
-  onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
-  onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
-  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
-}) {
-  const SymbolComponent = getComponentSymbolComponent(toolId);
-
-  return (
-    <Group x={x} y={y} rotation={rotation} scaleX={flipped ? -1 : 1}>
-      <SymbolComponent
-        x={0}
-        y={0}
-        rotation={0}
-        isSelected={isSelected}
-        draggable={draggable}
-        listening={listening}
-        strokeColor={strokeColor}
-        opacity={opacity}
-        onMouseDown={onMouseDown}
-        dragBoundFunc={dragBoundFunc}
-        onDragStart={onDragStart}
-        onDragMove={onDragMove}
-        onDragEnd={onDragEnd}
-      />
-    </Group>
-  );
-}
-
-function DrawingGlyph({
-  drawing,
-  isSelected,
-  hideText = false,
-  draggable = false,
-  listening = true,
-  strokeColor = 'black',
-  opacity = 1,
-  onMouseDown,
-  onDoubleClick,
-  dragBoundFunc,
-  onDragStart,
-  onDragMove,
-  onDragEnd,
-}: {
-  drawing: DrawingEntity;
-  isSelected: boolean;
-  hideText?: boolean;
-  draggable?: boolean;
-  listening?: boolean;
-  strokeColor?: string;
-  opacity?: number;
-  onMouseDown?: (e: KonvaEventObject<MouseEvent>) => void;
-  onDoubleClick?: (e: KonvaEventObject<MouseEvent>) => void;
-  dragBoundFunc?: (pos: { x: number; y: number }) => { x: number; y: number };
-  onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
-  onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
-  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
-}) {
-  const SymbolComponent = getDrawingSymbolComponent(drawing.toolId);
-
-  return (
-    <SymbolComponent
-      x={drawing.x}
-      y={drawing.y}
-      rotation={drawing.rotation}
-      isSelected={isSelected}
-      text={drawing.toolId === 'text' ? (hideText ? '' : getDrawingDisplayText(drawing)) : undefined}
-      strokeWidth={isBridgeDrawingTool(drawing.toolId) ? normalizeWireStrokeWidth(drawing.strokeWidth) : undefined}
-      border={drawing.toolId === 'text' ? drawing.border === true : undefined}
-      borderWidth={drawing.toolId === 'text' ? drawing.borderWidth : undefined}
-      borderHeight={drawing.toolId === 'text' ? drawing.borderHeight : undefined}
-      borderStrokeWidth={drawing.toolId === 'text' ? normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth) : undefined}
-      fontSize={drawing.toolId === 'text' ? getTextSymbolFontSize(drawing.fontSize) : undefined}
-      radiusX={isCircularShapeDrawingTool(drawing.toolId) ? drawing.radiusX : undefined}
-      radiusY={isCircularShapeDrawingTool(drawing.toolId) ? drawing.radiusY : undefined}
-      shapeWidth={drawing.toolId === 'rectangle' ? drawing.shapeWidth : undefined}
-      shapeHeight={drawing.toolId === 'rectangle' ? drawing.shapeHeight : undefined}
-      draggable={draggable}
-      listening={listening}
-      strokeColor={strokeColor}
-      opacity={opacity}
-      dragBoundFunc={dragBoundFunc}
-      onMouseDown={onMouseDown}
-      onDoubleClick={onDoubleClick}
-      onDragStart={onDragStart}
-      onDragMove={onDragMove}
-      onDragEnd={onDragEnd}
-    />
   );
 }
 
@@ -1844,7 +1695,7 @@ export default function CanvasViewport({
     ) {
       return false;
     }
-    const bounds = getSelectionBounds(sceneRef.current, selection);
+    const bounds = getSelectionAnchorBounds(sceneRef.current, selection);
     if (!bounds) {
       return false;
     }
@@ -2582,7 +2433,8 @@ export default function CanvasViewport({
         return;
       }
 
-      if (key === 'delete') {
+      // Backspace is the delete key on Mac keyboards.
+      if (key === 'delete' || key === 'backspace') {
         if (deleteSelection()) {
           event.preventDefault();
         }
@@ -2768,10 +2620,7 @@ export default function CanvasViewport({
 
         <Layer x={camera.offsetX} y={camera.offsetY} scaleX={camera.zoom} scaleY={camera.zoom}>
           {wires.map((wire) => {
-            const relativePoints = wire.vertices.flatMap((point) => [point.x, point.y]);
             const isSelected = selectedWireSet.has(wire.id);
-            const lineWidth = normalizeWireStrokeWidth(wire.strokeWidth);
-            const lineDash = normalizeWireDash(wire.dash);
             return (
               <React.Fragment key={wire.id}>
                 <Group
@@ -2779,30 +2628,7 @@ export default function CanvasViewport({
                   y={wire.y}
                   onMouseDown={handleEntityMouseDown('wire', wire.id)}
                 >
-                  {wire.arrowEnd ? (
-                    <Arrow
-                      points={getWireArrowRenderPoints(wire.vertices).flatMap((point) => [point.x, point.y])}
-                      stroke={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
-                      fill={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
-                      strokeWidth={lineWidth}
-                      dash={lineDash}
-                      pointerLength={WIRE_ARROW_POINTER_LENGTH}
-                      pointerWidth={WIRE_ARROW_POINTER_WIDTH}
-                      lineJoin="miter"
-                      lineCap="round"
-                      hitStrokeWidth={Math.max(6, lineWidth + 4)}
-                    />
-                  ) : (
-                    <Line
-                      points={relativePoints}
-                      stroke={wire.strokeColor ?? DEFAULT_STROKE_COLOR}
-                      strokeWidth={lineWidth}
-                      dash={lineDash}
-                      lineJoin="round"
-                      lineCap="round"
-                      hitStrokeWidth={Math.max(6, lineWidth + 4)}
-                    />
-                  )}
+                  <WireStroke wire={wire} />
                   {isSelected && !selectedTool && !isPasteMode &&
                     wire.vertices.map((point, index) => (
                       <Circle
