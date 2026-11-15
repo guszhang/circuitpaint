@@ -76,9 +76,13 @@
   box-shadow: 0 8px 24px rgba(26, 37, 47, 0.25);
   z-index: 1200;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: min(640px, calc(100vh - 80px));
 }
 
 .helpHeader {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -108,6 +112,8 @@
   color: #233443;
   padding: 12px;
   font-size: 13px;
+  overflow-y: auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;

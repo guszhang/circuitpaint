@@ -4,7 +4,7 @@ import React from 'react';
 import { Arrow, Group, Line } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
-type PotentiometerRotation = 0 | 90 | 180 | 270;
+type PotentiometerRotation = 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315;
 
 interface PotentiometerSymbolProps {
   x: number;

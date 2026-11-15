@@ -22,8 +22,8 @@ const isBoolean = (value: unknown): value is boolean => typeof value === 'boolea
 const isNumberArray = (value: unknown): value is number[] =>
   Array.isArray(value) && value.every((item) => typeof item === 'number' && Number.isFinite(item));
 
-const isRotation = (value: unknown): value is 0 | 90 | 180 | 270 =>
-  value === 0 || value === 90 || value === 180 || value === 270;
+const isRotation = (value: unknown): value is 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315 =>
+  [0, 45, 90, 135, 180, 225, 270, 315].includes(value as number);
 
 const isPoint = (value: unknown): value is { x: number; y: number } => {
   if (!value || typeof value !== 'object') {
@@ -488,11 +488,6 @@ export default function Home() {
         handleQuickSaveDownload();
         return;
       }
-
-      if (!event.ctrlKey && !event.metaKey && !event.altKey && key === 'w') {
-        event.preventDefault();
-        setSelectedTool('wire');
-      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -532,6 +527,7 @@ export default function Home() {
           showGrid={showGrid}
           halfGridEnabled={halfGridEnabled}
           onToolComplete={handleToolComplete}
+          onToolChange={handleToolSelect}
           onViewportControlsChange={handleViewportControlsChange}
         />
         <RightToolbar

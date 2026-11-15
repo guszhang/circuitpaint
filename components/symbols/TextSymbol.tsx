@@ -11,7 +11,7 @@ import {
   measureRenderedText,
 } from './textMetrics';
 
-type SymbolRotation = 0 | 90 | 180 | 270;
+type SymbolRotation = 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315;
 
 interface TextSymbolProps {
   x: number;

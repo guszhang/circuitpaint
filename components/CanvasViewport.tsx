@@ -6,7 +6,7 @@ import type { KonvaEventObject } from 'konva/lib/Node';
 import Konva from 'konva';
 import katex from 'katex';
 import Latex from './Latex';
-import { Camera, Point, screenToWorld } from '../lib/geometry';
+import { Camera, Point, getRotatedBoxSize, screenToWorld } from '../lib/geometry';
 import {
   getWireArrowRenderPoints,
   WIRE_ARROW_POINTER_LENGTH,
@@ -72,6 +72,7 @@ interface CanvasViewportProps {
   onContextMenu: (x: number, y: number) => void;
   selectedTool?: ToolId | '';
   onToolComplete?: () => void;
+  onToolChange?: (tool: ToolId) => void;
   showGrid?: boolean;
   halfGridEnabled?: boolean;
   onToggleGrid?: () => void;
@@ -94,7 +95,7 @@ export interface CanvasViewportControls {
 
 const DRAG_THRESHOLD = 5;
 const CANVAS_FILE_VERSION = 1;
-const rotateBy90 = (rotation: Rotation) => ((rotation + 90) % 360) as Rotation;
+const rotateBy = (rotation: Rotation, step: number) => ((rotation + step) % 360) as Rotation;
 const makeId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 const DEFAULT_SHAPE_SIZE = 40;
 const WIRE_DASH_OPTIONS = [
@@ -614,8 +615,7 @@ function getDrawingBounds(drawing: DrawingEntity) {
 
   if (drawing.toolId === 'text') {
     const box = getDrawingTextBoxSize(drawing);
-    const width = drawing.rotation % 180 === 0 ? box.width : box.height;
-    const height = drawing.rotation % 180 === 0 ? box.height : box.width;
+    const { width, height } = getRotatedBoxSize(box.width, box.height, drawing.rotation);
     const borderPad = drawing.border
       ? normalizeTextBorderStrokeWidth(drawing.borderStrokeWidth) / 2
       : 0;
@@ -639,8 +639,7 @@ function getDrawingBounds(drawing: DrawingEntity) {
 
   if (drawing.toolId === 'rectangle') {
     const size = getRectangleSize(drawing);
-    const width = drawing.rotation % 180 === 0 ? size.width : size.height;
-    const height = drawing.rotation % 180 === 0 ? size.height : size.width;
+    const { width, height } = getRotatedBoxSize(size.width, size.height, drawing.rotation);
     return {
       minX: drawing.x - width / 2,
       maxX: drawing.x + width / 2,
@@ -717,6 +716,7 @@ export default function CanvasViewport({
   onContextMenu,
   selectedTool,
   onToolComplete,
+  onToolChange,
   showGrid = true,
   halfGridEnabled = false,
   onToggleGrid,
@@ -1176,6 +1176,37 @@ export default function CanvasViewport({
     },
     [selectedWire, updateScene]
   );
+
+  useEffect(() => {
+    if (!selectedWire) {
+      return;
+    }
+    // Capture phase so these keys win over the toolbar's tool shortcuts (D = joint).
+    const handleWireKeys = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      if (key === 'd') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const isSolid = normalizeWireDash(selectedWire.dash).length === 0;
+        applySelectedWireDash(isSolid ? [...WIRE_DASH_OPTIONS[3].dash] : []);
+      } else if (key === 'b') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        applySelectedWireStrokeWidth(normalizeWireStrokeWidth(selectedWire.strokeWidth) === 1 ? 2 : 1);
+      } else if (key === 'a') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        applySelectedWireArrowEnd(selectedWire.arrowEnd !== true);
+      }
+    };
+    window.addEventListener('keydown', handleWireKeys, true);
+    return () => window.removeEventListener('keydown', handleWireKeys, true);
+  }, [selectedWire, applySelectedWireDash, applySelectedWireArrowEnd, applySelectedWireStrokeWidth]);
 
   const applySelectedBridgeStrokeWidth = useCallback(
     (strokeWidth: number) => {
@@ -2003,6 +2034,11 @@ export default function CanvasViewport({
             ],
           }));
           clearSelection();
+          if (activeDrawingTool === 'voltage-plus-annotation') {
+            onToolChange?.('voltage-minus-annotation');
+          } else if (activeDrawingTool === 'voltage-minus-annotation') {
+            onToolChange?.('voltage-plus-annotation');
+          }
           return;
         }
       }
@@ -2079,6 +2115,7 @@ export default function CanvasViewport({
       clearSelection,
       interactionTriage,
       isPasteMode,
+      onToolChange,
       placementRotation,
       selectedTool,
       updateScene,
@@ -2442,6 +2479,7 @@ export default function CanvasViewport({
       }
 
       if (key === 'r') {
+        const rotationStep = halfGridEnabled ? 45 : 90;
         if (
           selectedComponentIdsRef.current.length > 0 ||
           selectedDrawingIdsRef.current.length > 0
@@ -2451,13 +2489,13 @@ export default function CanvasViewport({
             ...prev,
             components: prev.components.map((component) =>
               selectedComponentIdsRef.current.includes(component.id)
-                ? { ...component, rotation: rotateBy90(component.rotation) }
+                ? { ...component, rotation: rotateBy(component.rotation, rotationStep) }
                 : component
             ),
             drawings: prev.drawings.map((drawing) =>
               selectedDrawingIdsRef.current.includes(drawing.id) &&
               !isShapeDrawingTool(drawing.toolId)
-                ? { ...drawing, rotation: rotateBy90(drawing.rotation) }
+                ? { ...drawing, rotation: rotateBy(drawing.rotation, rotationStep) }
                 : drawing
             ),
           }));
@@ -2466,7 +2504,7 @@ export default function CanvasViewport({
 
         if (selectedTool) {
           event.preventDefault();
-          setPlacementRotation((prev) => rotateBy90(prev));
+          setPlacementRotation((prev) => rotateBy(prev, rotationStep));
         }
         return;
       }
@@ -2490,6 +2528,7 @@ export default function CanvasViewport({
     copySelection,
     cutSelection,
     deleteSelection,
+    halfGridEnabled,
     isPasteMode,
     mirrorSelection,
     onToggleGrid,

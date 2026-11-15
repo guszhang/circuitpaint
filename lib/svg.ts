@@ -17,6 +17,7 @@ import {
   getTextBoxSize,
   hasLatexSyntax,
 } from '../components/symbols/textMetrics';
+import { getRotatedBoxSize } from './geometry';
 import { konvaElementToSvg, type SvgBounds } from './konvaSvg';
 
 const EXPORT_PADDING = 12;
@@ -87,8 +88,7 @@ function getDrawingTextBoxSize(drawing: DrawingEntity) {
 
 function textDrawingBounds(drawing: DrawingEntity): Bounds {
   const box = getDrawingTextBoxSize(drawing);
-  const width = drawing.rotation % 180 === 0 ? box.width : box.height;
-  const height = drawing.rotation % 180 === 0 ? box.height : box.width;
+  const { width, height } = getRotatedBoxSize(box.width, box.height, drawing.rotation);
   const borderPad = drawing.border ? getTextBorderStrokeWidth(drawing) / 2 : 0;
   return {
     minX: drawing.x - width / 2 - borderPad,

@@ -4,7 +4,7 @@ import React from 'react';
 import { Group, Line } from 'react-konva';
 import { KonvaEventObject } from 'konva/lib/Node';
 
-type SymbolRotation = 0 | 90 | 180 | 270;
+type SymbolRotation = 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315;
 
 interface ChassisGroundSymbolProps {
   x: number;

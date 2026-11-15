@@ -13,6 +13,9 @@ interface RightToolbarProps {
   onHalfGridChange?: (enabled: boolean) => void;
 }
 
+// Order follows DRAWING_TOOL_FAMILIES: joint, wire, shape, text, voltage, current
+const SHORTCUTS = ['d', 'w', undefined, 't', 's', 'q'];
+
 export default function RightToolbar({
   onToolSelect,
   selectedTool,
@@ -29,6 +32,7 @@ export default function RightToolbar({
       title="Tools"
       group="drawing"
       side="right"
+      shortcuts={SHORTCUTS}
       toolIds={toolIds}
       submenuByToolId={submenuByToolId}
       onToolSelect={(tool) => {

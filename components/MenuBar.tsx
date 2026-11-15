@@ -138,7 +138,7 @@ export default function MenuBar({
             </button>
           </div>
           <div className={styles.helpBody}>
-            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.10</div>
+            <div className={styles.helpSectionTitle2}>CircuitPaint v0.1.11</div>
 
             <div className={styles.helpMeta}>
               CircuitPaint is a lightweight schematic drawing tool developed to provide
@@ -150,11 +150,13 @@ export default function MenuBar({
             <ul className={styles.helpList}>
               <li>Click on an empty area of the canvas to clear the current selection.</li>
               <li>Click and drag to select multiple components.</li>
-              <li><strong>Long press on a component</strong> to access additional options.</li>
-              <li>Press <strong>R</strong> to rotate the selected component(s).</li>
+              <li><strong>Hover over a toolbar button</strong> with a small arrow to open its family menu, then click a variant to pick it. The chosen variant replaces the button's face.</li>
+              <li>Press <strong>1</strong>–<strong>8</strong> to select the component families on the left toolbar (shortcut shown on each button's corner).</li>
+              <li>Press <strong>R</strong> to rotate the selected component(s) by 90°, or by 45° when Half-grid is on.</li>
               <li>Press <strong>E</strong> to mirror the selected items horizontally.</li>
               <li>Press <strong>G</strong> to toggle grid visibility.</li>
-              <li>Press <strong>W</strong> to select the wire tool.</li>
+              <li>Press <strong>W</strong> for the wire tool, <strong>D</strong> for joints, <strong>T</strong> for text, <strong>Q</strong> for the current arrow and <strong>S</strong> for the voltage sign. After a voltage + is placed the tool switches to − (and back).</li>
+              <li>With a wire selected, press <strong>D</strong> to toggle dotted/continuous line <strong>A</strong> to toggle the arrow end and <strong>B</strong> to toggle line width between 1 and 2.</li>
               <li>Press <strong>Esc</strong> to deselect the current tool.</li>
               <li>Use <strong>Ctrl/Cmd + C</strong>, <strong>X</strong>, and <strong>V</strong> to copy, cut, and paste. Selected items can be pasted into apps that accept bitmap images.</li>
               <li>Use <strong>Ctrl/Cmd + S</strong> to export the schematic as a JSON file.</li>
@@ -182,7 +184,7 @@ export default function MenuBar({
               <strong>CircuitPaint</strong><br />
               <a href="mailto:cheng.zhang@manchester.ac.uk">Cheng (Gus) Zhang</a> · Department of Electrical and Electronic Engineering, The University of Manchester, UK<br />
               <br />
-              Developed in part using GitHub Copilot and OpenAI Codex · AGPL-3.0<br />
+              Developed in part using GitHub Copilot, OpenAI Codex and Claude Code (Anthropic) · AGPL-3.0<br />
               © {new Date().getFullYear()} Cheng (Gus) Zhang
             </div>
           </div>

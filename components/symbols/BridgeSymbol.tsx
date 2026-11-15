@@ -7,7 +7,7 @@ import { KonvaEventObject } from 'konva/lib/Node';
 interface BridgeSymbolProps {
   x: number;
   y: number;
-  rotation: 0 | 90 | 180 | 270;
+  rotation: 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315;
   draggable?: boolean;
   strokeColor?: string;
   strokeWidth?: number;

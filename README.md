@@ -5,13 +5,21 @@ CircuitPaint is a lightweight schematic drawing app built with Next.js, React, T
 ## Highlights
 
 - Two side toolbars: components on the left, drawing/annotation tools on the right.
-- Long-press tool families with submenu indicators (small border triangles).
+- Hover tool families (marked with small border triangles) to open their variant menu; keyboard shortcuts shown on buttons.
 - Grid-based placement and snapping for component placement, drawing placement, wire drafting, and wire vertex editing.
 - Wire styling controls for thickness, dash patterns, and optional arrow endings.
 - Text and LaTeX labels with grid-snapped borders and adjustable border thickness.
 - JSON open/save, SVG export, PNG download, and bitmap clipboard output.
 
 ## Update Log
+
+### 0.1.11
+
+- Family menus open on hover; picking a variant replaces the family's face button.
+- Keyboard shortcuts: `1`-`8` component families, `W` wire, `D` joint, `T` text, `S` voltage sign (auto-alternates + / -), `Q` current arrow.
+- With a wire selected: `D` toggles dotted, `A` toggles arrow, `B` toggles width 1/2.
+- Half-grid mode lets `R` rotate by 45 degrees.
+- Scrollable help dialog.
 
 ### 0.1.9
 

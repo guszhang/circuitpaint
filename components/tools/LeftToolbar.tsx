@@ -10,6 +10,8 @@ interface LeftToolbarProps {
   selectedTool?: ToolId | '';
 }
 
+const SHORTCUTS = ['1', '2', '3', '4', '5', '6', '7', '8'];
+
 export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarProps) {
   const { toolIds, submenuByToolId, handleToolSelect } = useToolFamilySelection<ComponentToolId>(
     COMPONENT_TOOL_FAMILIES,
@@ -21,6 +23,7 @@ export default function LeftToolbar({ onToolSelect, selectedTool }: LeftToolbarP
       title="Components"
       group="component"
       side="left"
+      shortcuts={SHORTCUTS}
       toolIds={toolIds}
       submenuByToolId={submenuByToolId}
       onToolSelect={(tool) => {

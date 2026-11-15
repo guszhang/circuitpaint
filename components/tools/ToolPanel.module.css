@@ -124,6 +124,45 @@
   border-radius: 6px;
   z-index: 20;
   box-shadow: 0 8px 18px rgba(33, 56, 94, 0.18);
+  animation: submenuIn 0.16s ease-out;
+}
+
+@keyframes submenuIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.panelRight .submenu {
+  transform-origin: right top;
+  animation-name: submenuInRight;
+}
+
+@keyframes submenuInRight {
+  from {
+    opacity: 0;
+    transform: translateX(6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.shortcutBadge {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: #5b6f91;
+  pointer-events: none;
 }
 
 .submenuButton {

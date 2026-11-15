@@ -1,7 +1,7 @@
 import type { Point } from '../../lib/geometry';
 import type { ComponentToolId, DrawingToolId } from '../../lib/tools';
 
-export type Rotation = 0 | 90 | 180 | 270;
+export type Rotation = 0 | 45 | 90 | 135 | 180 | 225 | 270 | 315;
 
 export type NonWireDrawingToolId = Exclude<DrawingToolId, 'wire'>;
 
