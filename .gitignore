@@ -41,3 +41,5 @@ next-env.d.ts
 # local configuration files
 .codex
 .vscode
+# local deploy settings (analytics ID, host)
+.deploy.env
